@@ -1,3 +1,5 @@
+use na::Vector3;
+use nalgebra as na;
 use std::{fs::File, io::BufRead, io::BufReader};
 
 #[derive(Debug)]
@@ -5,7 +7,7 @@ struct Molecule {
     // atomic charges
     zs: Vec<i32>,
     // coordinates
-    coords: Vec<f64>,
+    coords: Vec<Vector3<f64>>,
 }
 
 impl Molecule {
@@ -24,12 +26,17 @@ fn read_geom(geomfile: &str) -> Molecule {
     let mut mol = Molecule::new();
     for line in lines.map(|x| x.unwrap()) {
         let vec: Vec<&str> = line.split_whitespace().collect();
+        if vec.len() != 4 {
+            continue;
+        }
         mol.zs
             .push(vec[0].parse().expect("failed to parse atomic number"));
-        for coord in &vec[1..4] {
-            let coord: f64 = coord.parse().expect("failed to parse coord");
-            mol.coords.push(coord);
-        }
+        let coords: Vec<f64> = vec[1..4]
+            .iter()
+            .map(|c| c.parse().expect("failed to parse coord"))
+            .collect();
+        mol.coords
+            .push(na::vector![coords[0], coords[1], coords[2]]);
     }
     mol
 }
@@ -43,27 +50,13 @@ mod tests {
         let want = Molecule {
             zs: vec![6, 6, 8, 1, 1, 1, 1],
             coords: vec![
-                0.000000000000,
-                0.000000000000,
-                0.000000000000,
-                0.000000000000,
-                0.000000000000,
-                2.845112131228,
-                1.899115961744,
-                0.000000000000,
-                4.139062527233,
-                -1.894048308506,
-                0.000000000000,
-                3.747688672216,
-                1.942500819960,
-                0.000000000000,
-                -0.701145981971,
-                -1.007295466862,
-                -1.669971842687,
-                -0.705916966833,
-                -1.007295466862,
-                1.669971842687,
-                -0.705916966833,
+                na::vector![0.000000000000, 0.000000000000, 0.000000000000],
+                na::vector![0.000000000000, 0.000000000000, 2.845112131228],
+                na::vector![1.899115961744, 0.000000000000, 4.139062527233],
+                na::vector![-1.894048308506, 0.000000000000, 3.747688672216],
+                na::vector![1.942500819960, 0.000000000000, -0.701145981971],
+                na::vector![-1.007295466862, -1.669971842687, -0.705916966833],
+                na::vector![-1.007295466862, 1.669971842687, -0.705916966833],
             ],
         };
         assert_eq!(got.zs, want.zs, "got {:?}, wanted {:?}", got.zs, want.zs);

@@ -41,6 +41,17 @@ fn read_geom(geomfile: &str) -> Molecule {
     mol
 }
 
+fn bond_lengths(mol: Molecule) -> Vec<(usize, usize, f64)> {
+    let mut ret = Vec::new();
+    for (i, atom) in mol.coords.iter().enumerate() {
+        for (j, btom) in mol.coords[i + 1..].iter().enumerate() {
+            let diff = (atom - btom).magnitude();
+            ret.push((j + i + 1, i, diff));
+        }
+    }
+    ret
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -62,10 +73,57 @@ mod tests {
         assert_eq!(got.zs, want.zs, "got {:?}, wanted {:?}", got.zs, want.zs);
         assert_eq!(got.coords, want.coords);
     }
+
+    #[test]
+    fn test_bond_lengths() {
+        let got = bond_lengths(read_geom("inp/geom.xyz"));
+        let want = vec![
+            (1, 0, 2.84511),
+            (2, 0, 4.55395),
+            (3, 0, 4.19912),
+            (4, 0, 2.06517),
+            (5, 0, 2.07407),
+            (6, 0, 2.07407),
+            (2, 1, 2.29803),
+            (3, 1, 2.09811),
+            (4, 1, 4.04342),
+            (5, 1, 4.05133),
+            (6, 1, 4.05133),
+            (3, 2, 3.81330),
+            (4, 2, 4.84040),
+            (5, 2, 5.89151),
+            (6, 2, 5.89151),
+            (4, 3, 5.87463),
+            (5, 3, 4.83836),
+            (6, 3, 4.83836),
+            (5, 4, 3.38971),
+            (6, 4, 3.38971),
+            (6, 5, 3.33994),
+        ];
+        assert_eq!(got.len(), want.len());
+        assert_eq!(
+            got.iter().map(|x| x.0).collect::<Vec<usize>>(),
+            want.iter().map(|x| x.0).collect::<Vec<usize>>(),
+        );
+        assert_eq!(
+            got.iter().map(|x| x.1).collect::<Vec<usize>>(),
+            want.iter().map(|x| x.1).collect::<Vec<usize>>(),
+        );
+        let eps = 1e-5;
+        for i in 0..got.len() {
+            assert!(
+                got[i].2 - want[i].2 < eps,
+                "got {}, wanted {}",
+                got[i].2,
+                want[i].2
+            );
+        }
+    }
 }
 
 fn main() {
     let geomfile = "../inp/geom.xyz";
     let mol = read_geom(geomfile);
-    println!("{:?}", mol);
+    let lens = bond_lengths(mol);
+    println!("{:?}", lens);
 }

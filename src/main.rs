@@ -17,6 +17,9 @@ impl Molecule {
             coords: Vec::new(),
         }
     }
+    fn dist(&self, i: usize, j: usize) -> f64 {
+        (self.coords[i] - self.coords[j]).magnitude()
+    }
 }
 
 fn read_geom(geomfile: &str) -> Molecule {
@@ -41,12 +44,43 @@ fn read_geom(geomfile: &str) -> Molecule {
     mol
 }
 
-fn bond_lengths(mol: Molecule) -> Vec<(usize, usize, f64)> {
+fn bond_lengths(mol: &Molecule) -> Vec<(usize, usize, f64)> {
     let mut ret = Vec::new();
-    for (i, atom) in mol.coords.iter().enumerate() {
-        for (j, btom) in mol.coords[i + 1..].iter().enumerate() {
-            let diff = (atom - btom).magnitude();
-            ret.push((j + i + 1, i, diff));
+    let len = mol.coords.len();
+    for i in 0..len {
+        for j in i + 1..len {
+            ret.push((j, i, mol.dist(i, j)));
+        }
+    }
+    ret
+}
+
+/// return the unit vector in the direction of v
+fn unit(v: Vector3<f64>) -> Vector3<f64> {
+    v / v.magnitude()
+}
+
+/// return all of the bond angles in mol for which the legs of the angle are
+/// less than 4.0 in degrees
+fn bond_angles(mol: &Molecule) -> Vec<(usize, usize, usize, f64)> {
+    let mut ret = Vec::new();
+    let len = mol.coords.len();
+    for i in 0..len {
+        for j in i + 1..len {
+            if mol.dist(i, j) > 4.0 {
+                continue;
+            }
+            let atom = mol.coords[i];
+            let btom = mol.coords[j];
+            let eji = unit(atom - btom);
+            for k in j + 1..len {
+                if mol.dist(j, k) > 4.0 {
+                    continue;
+                }
+                let ctom = mol.coords[k];
+                let ejk = unit(ctom - btom);
+                ret.push((k, j, i, eji.dot(&ejk).acos().to_degrees()));
+            }
         }
     }
     ret
@@ -76,7 +110,7 @@ mod tests {
 
     #[test]
     fn test_bond_lengths() {
-        let got = bond_lengths(read_geom("inp/geom.xyz"));
+        let got = bond_lengths(&read_geom("inp/geom.xyz"));
         let want = vec![
             (1, 0, 2.84511),
             (2, 0, 4.55395),
@@ -112,10 +146,46 @@ mod tests {
         let eps = 1e-5;
         for i in 0..got.len() {
             assert!(
-                got[i].2 - want[i].2 < eps,
+                (got[i].2 - want[i].2).abs() < eps,
                 "got {}, wanted {}",
                 got[i].2,
                 want[i].2
+            );
+        }
+    }
+
+    #[test]
+    fn test_bond_angles() {
+        let got = bond_angles(&read_geom("inp/geom.xyz"));
+        let want = vec![
+            (2, 1, 0, 124.268308),
+            (3, 1, 0, 115.479341),
+            (5, 4, 0, 35.109529),
+            (6, 4, 0, 35.109529),
+            (6, 5, 0, 36.373677),
+            (3, 2, 1, 28.377448),
+            (6, 5, 4, 60.484476),
+        ];
+        assert_eq!(got.len(), want.len());
+        assert_eq!(
+            got.iter().map(|x| x.0).collect::<Vec<usize>>(),
+            want.iter().map(|x| x.0).collect::<Vec<usize>>(),
+        );
+        assert_eq!(
+            got.iter().map(|x| x.1).collect::<Vec<usize>>(),
+            want.iter().map(|x| x.1).collect::<Vec<usize>>(),
+        );
+        assert_eq!(
+            got.iter().map(|x| x.2).collect::<Vec<usize>>(),
+            want.iter().map(|x| x.2).collect::<Vec<usize>>(),
+        );
+        let eps = 1e-5;
+        for i in 0..got.len() {
+            assert!(
+                (got[i].3 - want[i].3).abs() < eps,
+                "got {}, wanted {}",
+                got[i].3,
+                want[i].3
             );
         }
     }
@@ -124,6 +194,7 @@ mod tests {
 fn main() {
     let geomfile = "../inp/geom.xyz";
     let mol = read_geom(geomfile);
-    let lens = bond_lengths(mol);
-    println!("{:?}", lens);
+    let lens = bond_lengths(&mol);
+    let angs = bond_angles(&mol);
+    println!("{:?}, {:?}", lens, angs);
 }

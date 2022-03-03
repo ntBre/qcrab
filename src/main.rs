@@ -20,6 +20,14 @@ impl Molecule {
     fn dist(&self, i: usize, j: usize) -> f64 {
         (self.coords[i] - self.coords[j]).magnitude()
     }
+    fn angle(&self, i: usize, j: usize, k: usize) -> f64 {
+        let atom = self.coords[i];
+        let btom = self.coords[j];
+        let ctom = self.coords[k];
+        let eji = unit(atom - btom);
+        let ejk = unit(ctom - btom);
+        return eji.dot(&ejk).acos();
+    }
 }
 
 fn read_geom(geomfile: &str) -> Molecule {
@@ -67,19 +75,46 @@ fn bond_angles(mol: &Molecule) -> Vec<(usize, usize, usize, f64)> {
     let len = mol.coords.len();
     for i in 0..len {
         for j in i + 1..len {
-            if mol.dist(i, j) > 4.0 {
-                continue;
-            }
-            let atom = mol.coords[i];
-            let btom = mol.coords[j];
-            let eji = unit(atom - btom);
             for k in j + 1..len {
-                if mol.dist(j, k) > 4.0 {
+                if mol.dist(i, j) > 4.0 || mol.dist(j, k) > 4.0 {
                     continue;
                 }
-                let ctom = mol.coords[k];
-                let ejk = unit(ctom - btom);
-                ret.push((k, j, i, eji.dot(&ejk).acos().to_degrees()));
+                ret.push((k, j, i, mol.angle(i, j, k).to_degrees()));
+            }
+        }
+    }
+    ret
+}
+
+fn op_angles(mol: &Molecule) -> Vec<(usize, usize, usize, usize, f64)> {
+    let mut ret = Vec::new();
+    let len = mol.coords.len();
+    for i in 0..len {
+        for k in 0..len {
+            for j in 0..len {
+                for l in 0..j {
+                    if i == j || i == k || i == l || j == k || k == l {
+                        continue;
+                    }
+                    if mol.dist(i, k) >= 4.0 || mol.dist(j, k) >= 4.0 || mol.dist(k, l) >= 4.0 {
+                        continue;
+                    }
+                    let atom = mol.coords[i];
+                    let btom = mol.coords[j];
+                    let ctom = mol.coords[k];
+                    let dtom = mol.coords[l];
+                    let ekl = unit(dtom - ctom);
+                    let eki = unit(atom - ctom);
+                    let ekj = unit(btom - ctom);
+                    let p_jkl = mol.angle(j, k, l).sin();
+                    ret.push((
+                        i,
+                        j,
+                        k,
+                        l,
+                        ((ekj.cross(&ekl) / p_jkl).dot(&eki).asin()).to_degrees(),
+                    ));
+                }
             }
         }
     }
@@ -186,6 +221,65 @@ mod tests {
                 "got {}, wanted {}",
                 got[i].3,
                 want[i].3
+            );
+        }
+    }
+
+    #[test]
+    fn test_op_angles() {
+        let got = op_angles(&read_geom("inp/geom.xyz"));
+        let want = vec![
+            (0, 3, 1, 2, -0.000000),
+            (0, 6, 4, 5, 19.939726),
+            (0, 6, 5, 4, -19.850523),
+            (0, 5, 6, 4, 19.850523),
+            (1, 5, 0, 4, 53.678778),
+            (1, 6, 0, 4, -53.678778),
+            (1, 6, 0, 5, 54.977064),
+            (2, 3, 1, 0, 0.000000),
+            (3, 2, 1, 0, -0.000000),
+            (4, 5, 0, 1, -53.651534),
+            (4, 6, 0, 1, 53.651534),
+            (4, 6, 0, 5, -54.869992),
+            (4, 6, 5, 0, 29.885677),
+            (4, 5, 6, 0, -29.885677),
+            (5, 4, 0, 1, 53.626323),
+            (5, 6, 0, 1, -56.277112),
+            (5, 6, 0, 4, 56.194621),
+            (5, 6, 4, 0, -30.558964),
+            (5, 4, 6, 0, 31.064344),
+            (6, 4, 0, 1, -53.626323),
+            (6, 5, 0, 1, 56.277112),
+            (6, 5, 0, 4, -56.194621),
+            (6, 5, 4, 0, 30.558964),
+            (6, 4, 5, 0, -31.064344),
+        ];
+        assert_eq!(got.len(), want.len());
+        assert_eq!(
+            got.iter().map(|x| x.0).collect::<Vec<usize>>(),
+            want.iter().map(|x| x.0).collect::<Vec<usize>>(),
+        );
+        assert_eq!(
+            got.iter().map(|x| x.1).collect::<Vec<usize>>(),
+            want.iter().map(|x| x.1).collect::<Vec<usize>>(),
+        );
+        assert_eq!(
+            got.iter().map(|x| x.2).collect::<Vec<usize>>(),
+            want.iter().map(|x| x.2).collect::<Vec<usize>>(),
+        );
+        assert_eq!(
+            got.iter().map(|x| x.3).collect::<Vec<usize>>(),
+            want.iter().map(|x| x.3).collect::<Vec<usize>>(),
+        );
+        let eps = 1e-5;
+        for i in 0..got.len() {
+            dbg!(i, got[i], want[i]);
+            assert!(
+                (got[i].4 - want[i].4).abs() < eps,
+                "got {}, wanted {} at {}",
+                got[i].4,
+                want[i].4,
+                i,
             );
         }
     }

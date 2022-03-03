@@ -107,13 +107,49 @@ fn op_angles(mol: &Molecule) -> Vec<(usize, usize, usize, usize, f64)> {
                     let eki = unit(atom - ctom);
                     let ekj = unit(btom - ctom);
                     let p_jkl = mol.angle(j, k, l).sin();
-                    ret.push((
-                        i,
-                        j,
-                        k,
-                        l,
-                        ((ekj.cross(&ekl) / p_jkl).dot(&eki).asin()).to_degrees(),
-                    ));
+                    let mut tmp = (ekj.cross(&ekl) / p_jkl).dot(&eki);
+                    if tmp < -1.0 {
+                        tmp = -1.0;
+                    } else if tmp > 1.0 {
+                        tmp = 1.0;
+                    }
+                    ret.push((i, j, k, l, tmp.asin().to_degrees()));
+                }
+            }
+        }
+    }
+    ret
+}
+
+fn torsional_angles(mol: &Molecule) -> Vec<(usize, usize, usize, usize, f64)> {
+    let mut ret = Vec::new();
+    let len = mol.coords.len();
+    for i in 0..len {
+        for j in 0..i {
+            for k in 0..j {
+                for l in 0..k {
+                    if mol.dist(i, j) >= 4.0 || mol.dist(j, k) >= 4.0 || mol.dist(k, l) >= 4.0 {
+                        continue;
+                    }
+                    let atom = mol.coords[i];
+                    let btom = mol.coords[j];
+                    let ctom = mol.coords[k];
+                    let dtom = mol.coords[l];
+                    let eij = unit(btom - atom);
+                    let ejk = unit(ctom - btom);
+                    let ekl = unit(dtom - ctom);
+                    let p_ijk = mol.angle(i, j, k).sin();
+                    let p_jkl = mol.angle(j, k, l).sin();
+                    let cross1 = eij.cross(&ejk);
+                    let cross2 = ejk.cross(&ekl);
+                    let dot = cross1.dot(&cross2);
+                    let mut div = dot / (p_ijk * p_jkl);
+                    if div < -1.0 {
+                        div = -1.0;
+                    } else if div > 1.0 {
+                        div = 1.0;
+                    }
+                    ret.push((i, j, k, l, (div.acos()).to_degrees()));
                 }
             }
         }
@@ -283,6 +319,40 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_torsional_angles() {
+        let got = torsional_angles(&read_geom("inp/geom.xyz"));
+        let want = vec![(3, 2, 1, 0, 180.000000), (6, 5, 4, 0, 36.366799)];
+        assert_eq!(got.len(), want.len());
+        assert_eq!(
+            got.iter().map(|x| x.0).collect::<Vec<usize>>(),
+            want.iter().map(|x| x.0).collect::<Vec<usize>>(),
+        );
+        assert_eq!(
+            got.iter().map(|x| x.1).collect::<Vec<usize>>(),
+            want.iter().map(|x| x.1).collect::<Vec<usize>>(),
+        );
+        assert_eq!(
+            got.iter().map(|x| x.2).collect::<Vec<usize>>(),
+            want.iter().map(|x| x.2).collect::<Vec<usize>>(),
+        );
+        assert_eq!(
+            got.iter().map(|x| x.3).collect::<Vec<usize>>(),
+            want.iter().map(|x| x.3).collect::<Vec<usize>>(),
+        );
+        let eps = 1e-5;
+        for i in 0..got.len() {
+            dbg!(i, got[i], want[i]);
+            assert!(
+                (got[i].4 - want[i].4).abs() < eps,
+                "got {}, wanted {} at {}",
+                got[i].4,
+                want[i].4,
+                i,
+            );
+        }
+    }
 }
 
 fn main() {
@@ -290,5 +360,7 @@ fn main() {
     let mol = read_geom(geomfile);
     let lens = bond_lengths(&mol);
     let angs = bond_angles(&mol);
-    println!("{:?}, {:?}", lens, angs);
+    let opbs = op_angles(&mol);
+    let tors = torsional_angles(&mol);
+    println!("{:?}, {:?}, {:?}, {:?}", lens, angs, opbs, tors);
 }

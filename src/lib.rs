@@ -121,7 +121,32 @@ pub fn op_angles(mol: &Molecule) -> Vec<(usize, usize, usize, usize, f64)> {
     ret
 }
 
-pub fn torsional_angles(mol: &Molecule) -> Vec<(usize, usize, usize, usize, f64)> {
+#[derive(Debug)]
+pub struct Tors {
+    i: usize,
+    j: usize,
+    k: usize,
+    l: usize,
+    val: f64,
+}
+
+impl Tors {
+    fn new(i: usize, j: usize, k: usize, l: usize, val: f64) -> Tors {
+        Tors { i, j, k, l, val }
+    }
+}
+
+impl PartialEq for Tors {
+    fn eq(&self, other: &Self) -> bool {
+        self.i == other.i
+            && self.j == other.j
+            && self.k == other.k
+            && self.l == other.l
+            && (self.val - other.val).abs() < 1e-6
+    }
+}
+
+pub fn torsional_angles(mol: &Molecule) -> Vec<Tors> {
     let mut ret = Vec::new();
     let len = mol.coords.len();
     for i in 0..len {
@@ -149,7 +174,7 @@ pub fn torsional_angles(mol: &Molecule) -> Vec<(usize, usize, usize, usize, f64)
                     } else if div > 1.0 {
                         div = 1.0;
                     }
-                    ret.push((i, j, k, l, (div.acos()).to_degrees()));
+                    ret.push(Tors::new(i, j, k, l, (div.acos()).to_degrees()));
                 }
             }
         }
@@ -323,34 +348,10 @@ mod tests {
     #[test]
     fn test_torsional_angles() {
         let got = torsional_angles(&read_geom("inp/geom.xyz"));
-        let want = vec![(3, 2, 1, 0, 180.000000), (6, 5, 4, 0, 36.366799)];
-        assert_eq!(got.len(), want.len());
-        assert_eq!(
-            got.iter().map(|x| x.0).collect::<Vec<usize>>(),
-            want.iter().map(|x| x.0).collect::<Vec<usize>>(),
-        );
-        assert_eq!(
-            got.iter().map(|x| x.1).collect::<Vec<usize>>(),
-            want.iter().map(|x| x.1).collect::<Vec<usize>>(),
-        );
-        assert_eq!(
-            got.iter().map(|x| x.2).collect::<Vec<usize>>(),
-            want.iter().map(|x| x.2).collect::<Vec<usize>>(),
-        );
-        assert_eq!(
-            got.iter().map(|x| x.3).collect::<Vec<usize>>(),
-            want.iter().map(|x| x.3).collect::<Vec<usize>>(),
-        );
-        let eps = 1e-5;
-        for i in 0..got.len() {
-            dbg!(i, got[i], want[i]);
-            assert!(
-                (got[i].4 - want[i].4).abs() < eps,
-                "got {}, wanted {} at {}",
-                got[i].4,
-                want[i].4,
-                i,
-            );
-        }
+        let want = vec![
+            Tors::new(3, 2, 1, 0, 180.000000),
+            Tors::new(6, 5, 4, 0, 36.366799),
+        ];
+        assert_eq!(got, want);
     }
 }

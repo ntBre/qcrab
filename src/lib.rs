@@ -106,7 +106,7 @@ impl PartialEq for Angle {
         self.i == other.i
             && self.j == other.j
             && self.k == other.k
-            && (self.val - other.val).abs() < 1e-5
+            && (self.val - other.val).abs() < 1e-6
     }
 }
 

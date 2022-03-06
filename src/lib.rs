@@ -52,12 +52,31 @@ pub fn read_geom(geomfile: &str) -> Molecule {
     mol
 }
 
-pub fn bond_lengths(mol: &Molecule) -> Vec<(usize, usize, f64)> {
+#[derive(Debug)]
+pub struct Bond {
+    i: usize,
+    j: usize,
+    val: f64,
+}
+
+impl Bond {
+    fn new(i: usize, j: usize, val: f64) -> Self {
+        Self { i, j, val }
+    }
+}
+
+impl PartialEq for Bond {
+    fn eq(&self, other: &Self) -> bool {
+        self.i == other.i && self.j == other.j && (self.val - other.val).abs() < 1e-5
+    }
+}
+
+pub fn bond_lengths(mol: &Molecule) -> Vec<Bond> {
     let mut ret = Vec::new();
     let len = mol.coords.len();
     for i in 0..len {
         for j in i + 1..len {
-            ret.push((j, i, mol.dist(i, j)));
+            ret.push(Bond::new(j, i, mol.dist(i, j)));
         }
     }
     ret
@@ -68,9 +87,32 @@ fn unit(v: Vector3<f64>) -> Vector3<f64> {
     v / v.magnitude()
 }
 
+#[derive(Debug)]
+pub struct Angle {
+    i: usize,
+    j: usize,
+    k: usize,
+    val: f64,
+}
+
+impl Angle {
+    fn new(i: usize, j: usize, k: usize, val: f64) -> Self {
+        Self { i, j, k, val }
+    }
+}
+
+impl PartialEq for Angle {
+    fn eq(&self, other: &Self) -> bool {
+        self.i == other.i
+            && self.j == other.j
+            && self.k == other.k
+            && (self.val - other.val).abs() < 1e-5
+    }
+}
+
 /// return all of the bond angles in mol for which the legs of the angle are
 /// less than 4.0 in degrees
-pub fn bond_angles(mol: &Molecule) -> Vec<(usize, usize, usize, f64)> {
+pub fn bond_angles(mol: &Molecule) -> Vec<Angle> {
     let mut ret = Vec::new();
     let len = mol.coords.len();
     for i in 0..len {
@@ -79,7 +121,7 @@ pub fn bond_angles(mol: &Molecule) -> Vec<(usize, usize, usize, f64)> {
                 if mol.dist(i, j) > 4.0 || mol.dist(j, k) > 4.0 {
                     continue;
                 }
-                ret.push((k, j, i, mol.angle(i, j, k).to_degrees()));
+                ret.push(Angle::new(k, j, i, mol.angle(i, j, k).to_degrees()));
             }
         }
     }
@@ -209,82 +251,44 @@ mod tests {
     fn test_bond_lengths() {
         let got = bond_lengths(&read_geom("inp/geom.xyz"));
         let want = vec![
-            (1, 0, 2.84511),
-            (2, 0, 4.55395),
-            (3, 0, 4.19912),
-            (4, 0, 2.06517),
-            (5, 0, 2.07407),
-            (6, 0, 2.07407),
-            (2, 1, 2.29803),
-            (3, 1, 2.09811),
-            (4, 1, 4.04342),
-            (5, 1, 4.05133),
-            (6, 1, 4.05133),
-            (3, 2, 3.81330),
-            (4, 2, 4.84040),
-            (5, 2, 5.89151),
-            (6, 2, 5.89151),
-            (4, 3, 5.87463),
-            (5, 3, 4.83836),
-            (6, 3, 4.83836),
-            (5, 4, 3.38971),
-            (6, 4, 3.38971),
-            (6, 5, 3.33994),
+            Bond::new(1, 0, 2.84511),
+            Bond::new(2, 0, 4.55395),
+            Bond::new(3, 0, 4.19912),
+            Bond::new(4, 0, 2.06517),
+            Bond::new(5, 0, 2.07407),
+            Bond::new(6, 0, 2.07407),
+            Bond::new(2, 1, 2.29803),
+            Bond::new(3, 1, 2.09811),
+            Bond::new(4, 1, 4.04342),
+            Bond::new(5, 1, 4.05133),
+            Bond::new(6, 1, 4.05133),
+            Bond::new(3, 2, 3.81330),
+            Bond::new(4, 2, 4.84040),
+            Bond::new(5, 2, 5.89151),
+            Bond::new(6, 2, 5.89151),
+            Bond::new(4, 3, 5.87463),
+            Bond::new(5, 3, 4.83836),
+            Bond::new(6, 3, 4.83836),
+            Bond::new(5, 4, 3.38971),
+            Bond::new(6, 4, 3.38971),
+            Bond::new(6, 5, 3.33994),
         ];
-        assert_eq!(got.len(), want.len());
-        assert_eq!(
-            got.iter().map(|x| x.0).collect::<Vec<usize>>(),
-            want.iter().map(|x| x.0).collect::<Vec<usize>>(),
-        );
-        assert_eq!(
-            got.iter().map(|x| x.1).collect::<Vec<usize>>(),
-            want.iter().map(|x| x.1).collect::<Vec<usize>>(),
-        );
-        let eps = 1e-5;
-        for i in 0..got.len() {
-            assert!(
-                (got[i].2 - want[i].2).abs() < eps,
-                "got {}, wanted {}",
-                got[i].2,
-                want[i].2
-            );
-        }
+        assert_eq!(got, want);
     }
 
     #[test]
     fn test_bond_angles() {
         let got = bond_angles(&read_geom("inp/geom.xyz"));
         let want = vec![
-            (2, 1, 0, 124.268308),
-            (3, 1, 0, 115.479341),
-            (5, 4, 0, 35.109529),
-            (6, 4, 0, 35.109529),
-            (6, 5, 0, 36.373677),
-            (3, 2, 1, 28.377448),
-            (6, 5, 4, 60.484476),
+            Angle::new(2, 1, 0, 124.268308),
+            Angle::new(3, 1, 0, 115.479341),
+            Angle::new(5, 4, 0, 35.109529),
+            Angle::new(6, 4, 0, 35.109529),
+            Angle::new(6, 5, 0, 36.373677),
+            Angle::new(3, 2, 1, 28.377448),
+            Angle::new(6, 5, 4, 60.484476),
         ];
-        assert_eq!(got.len(), want.len());
-        assert_eq!(
-            got.iter().map(|x| x.0).collect::<Vec<usize>>(),
-            want.iter().map(|x| x.0).collect::<Vec<usize>>(),
-        );
-        assert_eq!(
-            got.iter().map(|x| x.1).collect::<Vec<usize>>(),
-            want.iter().map(|x| x.1).collect::<Vec<usize>>(),
-        );
-        assert_eq!(
-            got.iter().map(|x| x.2).collect::<Vec<usize>>(),
-            want.iter().map(|x| x.2).collect::<Vec<usize>>(),
-        );
-        let eps = 1e-5;
-        for i in 0..got.len() {
-            assert!(
-                (got[i].3 - want[i].3).abs() < eps,
-                "got {}, wanted {}",
-                got[i].3,
-                want[i].3
-            );
-        }
+        assert_eq!(got, want);
     }
 
     #[test]

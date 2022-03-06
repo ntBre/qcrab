@@ -22,6 +22,26 @@ pub struct Molecule {
     coords: Vec<Vector3<f64>>,
 }
 
+impl PartialEq for Molecule {
+    fn eq(&self, other: &Self) -> bool {
+        if self.zs != other.zs {
+            dbg!("zs mismatch");
+            return false;
+        }
+        if self.coords.len() != other.coords.len() {
+            dbg!("length mismatch");
+            return false;
+        }
+        for (i, c) in self.coords.iter().enumerate() {
+            if (c - other.coords[i]).norm() > 1e-7 {
+                dbg!("coords mismatch in index {}", i);
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
 impl Molecule {
     pub fn new() -> Molecule {
         Molecule {
@@ -51,6 +71,11 @@ impl Molecule {
             ret[2] += mi * self.coords[i][2];
         }
         ret / m
+    }
+    pub fn translate(&mut self, vec: Vector3<f64>) {
+        for (i, _) in self.zs.iter().enumerate() {
+            self.coords[i] -= vec;
+        }
     }
 }
 
@@ -267,8 +292,7 @@ mod tests {
                 na::vector![-1.007295466862, 1.669971842687, -0.705916966833],
             ],
         };
-        assert_eq!(got.zs, want.zs, "got {:?}, wanted {:?}", got.zs, want.zs);
-        assert_eq!(got.coords, want.coords);
+        assert_eq!(got, want);
     }
 
     #[test]
@@ -370,5 +394,25 @@ mod tests {
             want,
             norm
         );
+    }
+
+    #[test]
+    fn test_translate() {
+        let mut mol = read_geom("inp/geom.xyz");
+        let com = mol.center_of_mass();
+        mol.translate(com);
+        let want = Molecule {
+            zs: vec![6, 6, 8, 1, 1, 1, 1],
+            coords: vec![
+                na::vector![-0.644949260000, 0.000000000000, -2.316637920000],
+                na::vector![-0.644949260000, 0.000000000000, 0.528474211228],
+                na::vector![1.254166701744, 0.000000000000, 1.822424607233],
+                na::vector![-2.538997568506, 0.000000000000, 1.431050752216],
+                na::vector![1.297551559960, 0.000000000000, -3.017783901971],
+                na::vector![-1.652244726862, -1.669971842687, -3.022554886833],
+                na::vector![-1.652244726862, 1.669971842687, -3.022554886833],
+            ],
+        };
+        assert_eq!(mol, want, "got {:?}, wanted {:?}", mol, want);
     }
 }

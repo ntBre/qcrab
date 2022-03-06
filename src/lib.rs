@@ -86,7 +86,8 @@ pub fn bond_angles(mol: &Molecule) -> Vec<(usize, usize, usize, f64)> {
     ret
 }
 
-pub fn op_angles(mol: &Molecule) -> Vec<(usize, usize, usize, usize, f64)> {
+/// Compute the out-of-plane angles for `mol`
+pub fn oop_angles(mol: &Molecule) -> Vec<Tors> {
     let mut ret = Vec::new();
     let len = mol.coords.len();
     for i in 0..len {
@@ -113,7 +114,7 @@ pub fn op_angles(mol: &Molecule) -> Vec<(usize, usize, usize, usize, f64)> {
                     } else if tmp > 1.0 {
                         tmp = 1.0;
                     }
-                    ret.push((i, j, k, l, tmp.asin().to_degrees()));
+                    ret.push(Tors::new(i, j, k, l, tmp.asin().to_degrees()));
                 }
             }
         }
@@ -288,61 +289,34 @@ mod tests {
 
     #[test]
     fn test_op_angles() {
-        let got = op_angles(&read_geom("inp/geom.xyz"));
+        let got = oop_angles(&read_geom("inp/geom.xyz"));
         let want = vec![
-            (0, 3, 1, 2, -0.000000),
-            (0, 6, 4, 5, 19.939726),
-            (0, 6, 5, 4, -19.850523),
-            (0, 5, 6, 4, 19.850523),
-            (1, 5, 0, 4, 53.678778),
-            (1, 6, 0, 4, -53.678778),
-            (1, 6, 0, 5, 54.977064),
-            (2, 3, 1, 0, 0.000000),
-            (3, 2, 1, 0, -0.000000),
-            (4, 5, 0, 1, -53.651534),
-            (4, 6, 0, 1, 53.651534),
-            (4, 6, 0, 5, -54.869992),
-            (4, 6, 5, 0, 29.885677),
-            (4, 5, 6, 0, -29.885677),
-            (5, 4, 0, 1, 53.626323),
-            (5, 6, 0, 1, -56.277112),
-            (5, 6, 0, 4, 56.194621),
-            (5, 6, 4, 0, -30.558964),
-            (5, 4, 6, 0, 31.064344),
-            (6, 4, 0, 1, -53.626323),
-            (6, 5, 0, 1, 56.277112),
-            (6, 5, 0, 4, -56.194621),
-            (6, 5, 4, 0, 30.558964),
-            (6, 4, 5, 0, -31.064344),
+            Tors::new(0, 3, 1, 2, -0.000000),
+            Tors::new(0, 6, 4, 5, 19.939726),
+            Tors::new(0, 6, 5, 4, -19.850523),
+            Tors::new(0, 5, 6, 4, 19.850523),
+            Tors::new(1, 5, 0, 4, 53.678778),
+            Tors::new(1, 6, 0, 4, -53.678778),
+            Tors::new(1, 6, 0, 5, 54.977064),
+            Tors::new(2, 3, 1, 0, 0.000000),
+            Tors::new(3, 2, 1, 0, -0.000000),
+            Tors::new(4, 5, 0, 1, -53.651534),
+            Tors::new(4, 6, 0, 1, 53.651534),
+            Tors::new(4, 6, 0, 5, -54.869992),
+            Tors::new(4, 6, 5, 0, 29.885677),
+            Tors::new(4, 5, 6, 0, -29.885677),
+            Tors::new(5, 4, 0, 1, 53.626323),
+            Tors::new(5, 6, 0, 1, -56.277112),
+            Tors::new(5, 6, 0, 4, 56.194621),
+            Tors::new(5, 6, 4, 0, -30.558964),
+            Tors::new(5, 4, 6, 0, 31.064344),
+            Tors::new(6, 4, 0, 1, -53.626323),
+            Tors::new(6, 5, 0, 1, 56.277112),
+            Tors::new(6, 5, 0, 4, -56.194621),
+            Tors::new(6, 5, 4, 0, 30.558964),
+            Tors::new(6, 4, 5, 0, -31.064344),
         ];
-        assert_eq!(got.len(), want.len());
-        assert_eq!(
-            got.iter().map(|x| x.0).collect::<Vec<usize>>(),
-            want.iter().map(|x| x.0).collect::<Vec<usize>>(),
-        );
-        assert_eq!(
-            got.iter().map(|x| x.1).collect::<Vec<usize>>(),
-            want.iter().map(|x| x.1).collect::<Vec<usize>>(),
-        );
-        assert_eq!(
-            got.iter().map(|x| x.2).collect::<Vec<usize>>(),
-            want.iter().map(|x| x.2).collect::<Vec<usize>>(),
-        );
-        assert_eq!(
-            got.iter().map(|x| x.3).collect::<Vec<usize>>(),
-            want.iter().map(|x| x.3).collect::<Vec<usize>>(),
-        );
-        let eps = 1e-5;
-        for i in 0..got.len() {
-            dbg!(i, got[i], want[i]);
-            assert!(
-                (got[i].4 - want[i].4).abs() < eps,
-                "got {}, wanted {} at {}",
-                got[i].4,
-                want[i].4,
-                i,
-            );
-        }
+        assert_eq!(got, want);
     }
 
     #[test]

@@ -2,6 +2,18 @@ use na::Vector3;
 use nalgebra as na;
 use std::{fs::File, io::BufRead, io::BufReader};
 
+const PTABLE: [f64; 9] = [
+    0.0,
+    1.007_825_032,
+    4.002_603_254,
+    7.016_003_436,
+    9.012_183_0,
+    11.009_305,
+    12.00,
+    14.003_074_004,
+    15.994_914_619,
+];
+
 #[derive(Debug)]
 pub struct Molecule {
     // atomic charges
@@ -27,6 +39,18 @@ impl Molecule {
         let eji = unit(atom - btom);
         let ejk = unit(ctom - btom);
         return eji.dot(&ejk).acos();
+    }
+    pub fn center_of_mass(&self) -> Vector3<f64> {
+        let mut ret = na::vector![0.0, 0.0, 0.0];
+        let mut m: f64 = 0.0;
+        for (i, z) in self.zs.iter().enumerate() {
+            let mi = PTABLE[*z as usize];
+            m += mi;
+            ret[0] += mi * self.coords[i][0];
+            ret[1] += mi * self.coords[i][1];
+            ret[2] += mi * self.coords[i][2];
+        }
+        ret / m
     }
 }
 
@@ -331,5 +355,20 @@ mod tests {
             Tors::new(6, 5, 4, 0, 36.366799),
         ];
         assert_eq!(got, want);
+    }
+
+    #[test]
+    fn test_com() {
+        let mol = read_geom("inp/geom.xyz");
+        let got = mol.center_of_mass();
+        let want = na::vector![0.64494926, 0.00000000, 2.31663792];
+        let norm = (got - want).norm();
+        assert!(
+            norm < 3e-8,
+            "got {}, wanted {} with norm {:e}",
+            got,
+            want,
+            norm
+        );
     }
 }

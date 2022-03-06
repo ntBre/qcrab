@@ -1,6 +1,6 @@
 use na::Vector3;
 use nalgebra as na;
-use std::{fs::File, io::BufRead, io::BufReader};
+use std::{fs::File, io::BufRead, io::BufReader, iter::zip};
 
 const PTABLE: [f64; 9] = [
     0.0,
@@ -63,18 +63,16 @@ impl Molecule {
     pub fn center_of_mass(&self) -> Vector3<f64> {
         let mut ret = na::vector![0.0, 0.0, 0.0];
         let mut m: f64 = 0.0;
-        for (i, z) in self.zs.iter().enumerate() {
+        for (z, c) in zip(&self.zs, &self.coords) {
             let mi = PTABLE[*z as usize];
             m += mi;
-            ret[0] += mi * self.coords[i][0];
-            ret[1] += mi * self.coords[i][1];
-            ret[2] += mi * self.coords[i][2];
+            ret += mi * c;
         }
         ret / m
     }
     pub fn translate(&mut self, vec: Vector3<f64>) {
-        for (i, _) in self.zs.iter().enumerate() {
-            self.coords[i] -= vec;
+        for c in &mut self.coords {
+            *c -= vec;
         }
     }
 }

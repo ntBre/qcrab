@@ -2,7 +2,7 @@ use na::Vector3;
 use nalgebra as na;
 use std::{fs::File, io::BufRead, io::BufReader, iter::zip};
 
-use crate::{Angle, Bond, Tors, Vec3};
+use crate::{Angle, Bond, Mat3, Tors, Vec3};
 
 const PTABLE: [f64; 9] = [
     0.0,
@@ -20,6 +20,12 @@ const PTABLE: [f64; 9] = [
 pub struct Atom {
     atomic_number: usize,
     coord: Vec3,
+}
+
+impl Atom {
+    pub fn mass(&self) -> f64 {
+        PTABLE[self.atomic_number]
+    }
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -90,14 +96,10 @@ impl Molecule {
     pub fn center_of_mass(&self) -> Vector3<f64> {
         let mut ret = na::vector![0.0, 0.0, 0.0];
         let mut m: f64 = 0.0;
-        for Atom {
-            atomic_number: z,
-            coord: c,
-        } in &self.atoms
-        {
-            let mi = PTABLE[*z];
+        for atom in &self.atoms {
+            let mi = atom.mass();
             m += mi;
-            ret += mi * c;
+            ret += mi * atom.coord;
         }
         ret / m
     }
@@ -234,6 +236,28 @@ impl Molecule {
             }
         }
         ret
+    }
+
+    pub fn moi(&self) -> Mat3 {
+        let mut i = Mat3::zeros();
+        const X: usize = 0;
+        const Y: usize = 1;
+        const Z: usize = 2;
+        for atom in &self.atoms {
+            let mi = atom.mass();
+            // diagonal
+            i[(X, X)] += mi * (atom.coord.y.powi(2) + atom.coord.z.powi(2));
+            i[(Y, Y)] += mi * (atom.coord.x.powi(2) + atom.coord.z.powi(2));
+            i[(Z, Z)] += mi * (atom.coord.x.powi(2) + atom.coord.y.powi(2));
+            // off-diagonal
+            i[(X, Y)] -= mi * atom.coord.x * atom.coord.y;
+            i[(X, Z)] -= mi * atom.coord.x * atom.coord.z;
+            i[(Y, Z)] -= mi * atom.coord.y * atom.coord.z;
+        }
+        i[(Y, X)] = i[(X, Y)];
+        i[(Z, X)] = i[(X, Z)];
+        i[(Z, Y)] = i[(Y, Z)];
+        i
     }
 }
 

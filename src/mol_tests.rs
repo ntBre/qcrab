@@ -189,3 +189,18 @@ fn test_translate() {
     );
     assert_abs_diff_eq!(mol, want);
 }
+
+#[test]
+fn test_moi() {
+    let mut mol = Molecule::load("inp/geom.xyz");
+    let com = mol.center_of_mass();
+    mol.translate(com);
+    let got = mol.moi();
+    #[rustfmt::skip]
+    let want = na::Matrix3::new(
+        156.154091561645, 0.000000000000, -52.855584120568,
+        0.000000000000, 199.371126996236, 0.000000000000,
+        -52.855584120568, 0.000000000000, 54.459548882464,
+    );
+    assert_abs_diff_eq!(got, want, epsilon = 8e-7);
+}

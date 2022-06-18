@@ -204,3 +204,16 @@ fn test_moi() {
     );
     assert_abs_diff_eq!(got, want, epsilon = 8e-7);
 }
+
+#[test]
+fn test_rots() {
+    let mut mol = Molecule::load("inp/geom.xyz");
+    let com = mol.center_of_mass();
+    mol.translate(com);
+    let moi = mol.moi();
+
+    let evals = moi.eigenvalues().expect("failed to diagonalize moi");
+    let mut evals = Vec::from(evals.as_slice());
+    evals.sort_by(|a, b| b.partial_cmp(a).unwrap());
+    dbg!(evals);
+}

@@ -114,7 +114,9 @@ impl Bond {
 
 impl PartialEq for Bond {
     fn eq(&self, other: &Self) -> bool {
-        self.i == other.i && self.j == other.j && (self.val - other.val).abs() < 1e-5
+        self.i == other.i
+            && self.j == other.j
+            && (self.val - other.val).abs() < 1e-5
     }
 }
 
@@ -186,7 +188,10 @@ pub fn oop_angles(mol: &Molecule) -> Vec<Tors> {
                     if i == j || i == k || i == l || j == k || k == l {
                         continue;
                     }
-                    if mol.dist(i, k) >= 4.0 || mol.dist(j, k) >= 4.0 || mol.dist(k, l) >= 4.0 {
+                    if mol.dist(i, k) >= 4.0
+                        || mol.dist(j, k) >= 4.0
+                        || mol.dist(k, l) >= 4.0
+                    {
                         continue;
                     }
                     let atom = mol.coords[i];
@@ -243,7 +248,10 @@ pub fn torsional_angles(mol: &Molecule) -> Vec<Tors> {
         for j in 0..i {
             for k in 0..j {
                 for l in 0..k {
-                    if mol.dist(i, j) >= 4.0 || mol.dist(j, k) >= 4.0 || mol.dist(k, l) >= 4.0 {
+                    if mol.dist(i, j) >= 4.0
+                        || mol.dist(j, k) >= 4.0
+                        || mol.dist(k, l) >= 4.0
+                    {
                         continue;
                     }
                     let atom = mol.coords[i];

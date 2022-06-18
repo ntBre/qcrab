@@ -1,7 +1,11 @@
+use nalgebra as na;
+
 #[cfg(test)]
 mod mol_tests;
 
 pub mod molecule;
+
+type Vec3 = na::Vector3<f64>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Bond {

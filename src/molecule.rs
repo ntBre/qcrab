@@ -2,7 +2,7 @@ use na::Vector3;
 use nalgebra as na;
 use std::{fs::File, io::BufRead, io::BufReader, iter::zip};
 
-use crate::{Angle, Bond, Tors};
+use crate::{Angle, Bond, Tors, Vec3};
 
 const PTABLE: [f64; 9] = [
     0.0,
@@ -17,12 +17,14 @@ const PTABLE: [f64; 9] = [
 ];
 
 #[derive(Debug, Default, PartialEq)]
-pub struct Molecule {
-    /// atomic charges
-    zs: Vec<i32>,
+pub struct Atom {
+    atomic_number: usize,
+    coord: Vec3,
+}
 
-    /// coordinates
-    coords: Vec<Vector3<f64>>,
+#[derive(Debug, Default, PartialEq)]
+pub struct Molecule {
+    atoms: Vec<Atom>,
 }
 
 /// return the unit vector in the direction of v
@@ -31,8 +33,20 @@ fn unit(v: Vector3<f64>) -> Vector3<f64> {
 }
 
 impl Molecule {
-    pub fn new(zs: Vec<i32>, coords: Vec<Vector3<f64>>) -> Self {
-        Self { zs, coords }
+    pub fn new(atoms: Vec<Atom>) -> Self {
+        Self { atoms }
+    }
+
+    pub fn from_vecs(zs: Vec<usize>, coords: Vec<Vec3>) -> Self {
+        let mut ret = Self::default();
+        assert_eq!(zs.len(), coords.len());
+        for (atomic_number, coord) in zip(zs, coords) {
+            ret.atoms.push(Atom {
+                atomic_number,
+                coord,
+            })
+        }
+        ret
     }
 
     pub fn load(geomfile: &str) -> Self {
@@ -44,26 +58,30 @@ impl Molecule {
             if vec.len() != 4 {
                 continue;
             }
-            mol.zs
-                .push(vec[0].parse().expect("failed to parse atomic number"));
             let coords: Vec<f64> = vec[1..4]
                 .iter()
                 .map(|c| c.parse().expect("failed to parse coord"))
                 .collect();
-            mol.coords
-                .push(na::vector![coords[0], coords[1], coords[2]]);
+            mol.atoms.push(Atom {
+                atomic_number: vec[0]
+                    .parse()
+                    .expect("failed to parse atomic number"),
+                coord: na::vector![coords[0], coords[1], coords[2]],
+            });
         }
         mol
     }
 
     pub fn dist(&self, i: usize, j: usize) -> f64 {
-        (self.coords[i] - self.coords[j]).magnitude()
+        (self.atoms[i].coord - self.atoms[j].coord).magnitude()
     }
 
+    /// compute the angle between atoms `i`, `j`, and `k`, assuming that `j` is
+    /// the central atom. panics if any of these is out of range
     pub fn angle(&self, i: usize, j: usize, k: usize) -> f64 {
-        let atom = self.coords[i];
-        let btom = self.coords[j];
-        let ctom = self.coords[k];
+        let atom = self.atoms[i].coord;
+        let btom = self.atoms[j].coord;
+        let ctom = self.atoms[k].coord;
         let eji = unit(atom - btom);
         let ejk = unit(ctom - btom);
         return eji.dot(&ejk).acos();
@@ -72,8 +90,12 @@ impl Molecule {
     pub fn center_of_mass(&self) -> Vector3<f64> {
         let mut ret = na::vector![0.0, 0.0, 0.0];
         let mut m: f64 = 0.0;
-        for (z, c) in zip(&self.zs, &self.coords) {
-            let mi = PTABLE[*z as usize];
+        for Atom {
+            atomic_number: z,
+            coord: c,
+        } in &self.atoms
+        {
+            let mi = PTABLE[*z];
             m += mi;
             ret += mi * c;
         }
@@ -81,15 +103,15 @@ impl Molecule {
     }
 
     pub fn translate(&mut self, vec: Vector3<f64>) {
-        for c in &mut self.coords {
-            *c -= vec;
+        for atom in &mut self.atoms {
+            atom.coord -= vec;
         }
     }
 
     pub fn bond_lengths(&self) -> Vec<Bond> {
         let mol = self;
         let mut ret = Vec::new();
-        let len = mol.coords.len();
+        let len = mol.atoms.len();
         for i in 0..len {
             for j in i + 1..len {
                 ret.push(Bond::new(j, i, mol.dist(i, j)));
@@ -103,7 +125,7 @@ impl Molecule {
     pub fn bond_angles(&self) -> Vec<Angle> {
         let mol = self;
         let mut ret = Vec::new();
-        let len = mol.coords.len();
+        let len = mol.atoms.len();
         for i in 0..len {
             for j in i + 1..len {
                 for k in j + 1..len {
@@ -126,7 +148,7 @@ impl Molecule {
     pub fn oop_angles(&self) -> Vec<Tors> {
         let mol = self;
         let mut ret = Vec::new();
-        let len = mol.coords.len();
+        let len = mol.atoms.len();
         for i in 0..len {
             for k in 0..len {
                 for j in 0..len {
@@ -140,10 +162,10 @@ impl Molecule {
                         {
                             continue;
                         }
-                        let atom = mol.coords[i];
-                        let btom = mol.coords[j];
-                        let ctom = mol.coords[k];
-                        let dtom = mol.coords[l];
+                        let atom = mol.atoms[i].coord;
+                        let btom = mol.atoms[j].coord;
+                        let ctom = mol.atoms[k].coord;
+                        let dtom = mol.atoms[l].coord;
                         let ekl = unit(dtom - ctom);
                         let eki = unit(atom - ctom);
                         let ekj = unit(btom - ctom);
@@ -171,7 +193,7 @@ impl Molecule {
     pub fn torsional_angles(&self) -> Vec<Tors> {
         let mol = self;
         let mut ret = Vec::new();
-        let len = mol.coords.len();
+        let len = mol.atoms.len();
         for i in 0..len {
             for j in 0..i {
                 for k in 0..j {
@@ -182,10 +204,10 @@ impl Molecule {
                         {
                             continue;
                         }
-                        let atom = mol.coords[i];
-                        let btom = mol.coords[j];
-                        let ctom = mol.coords[k];
-                        let dtom = mol.coords[l];
+                        let atom = mol.atoms[i].coord;
+                        let btom = mol.atoms[j].coord;
+                        let ctom = mol.atoms[k].coord;
+                        let dtom = mol.atoms[l].coord;
                         let eij = unit(btom - atom);
                         let ejk = unit(ctom - btom);
                         let ekl = unit(dtom - ctom);
@@ -215,6 +237,24 @@ impl Molecule {
     }
 }
 
+impl approx::AbsDiffEq for Atom {
+    type Epsilon = f64;
+
+    fn default_epsilon() -> Self::Epsilon {
+        1e-7
+    }
+
+    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
+        if self.atomic_number != other.atomic_number {
+            return false;
+        }
+        if (self.coord - other.coord).norm() > epsilon {
+            return false;
+        }
+        return true;
+    }
+}
+
 impl approx::AbsDiffEq for Molecule {
     type Epsilon = f64;
 
@@ -223,17 +263,8 @@ impl approx::AbsDiffEq for Molecule {
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        if self.zs != other.zs {
-            return false;
-        }
-        if self.coords.len() != other.coords.len() {
-            return false;
-        }
-        for (i, c) in self.coords.iter().enumerate() {
-            if (c - other.coords[i]).norm() > epsilon {
-                return false;
-            }
-        }
-        return true;
+        self.atoms.len() == other.atoms.len()
+            && zip(&self.atoms, &other.atoms)
+                .all(|(a, b)| a.abs_diff_eq(&b, epsilon))
     }
 }

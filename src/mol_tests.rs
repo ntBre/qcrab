@@ -52,7 +52,7 @@ impl AbsDiffEq for Tors {
 #[test]
 fn test_read_geom() {
     let got = Molecule::load("inp/geom.xyz");
-    let want = Molecule::new(
+    let want = Molecule::from_vecs(
         vec![6, 6, 8, 1, 1, 1, 1],
         vec![
             na::vector![0.000000000000, 0.000000000000, 0.000000000000],
@@ -175,7 +175,7 @@ fn test_translate() {
     let mut mol = Molecule::load("inp/geom.xyz");
     let com = mol.center_of_mass();
     mol.translate(com);
-    let want = Molecule::new(
+    let want = Molecule::from_vecs(
         vec![6, 6, 8, 1, 1, 1, 1],
         vec![
             na::vector![-0.644949260000, 0.000000000000, -2.316637920000],

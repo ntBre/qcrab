@@ -1,13 +1,12 @@
-use qcrab::{
-    self, bond_angles, bond_lengths, oop_angles, torsional_angles, Molecule,
-};
+use qcrab::molecule::Molecule;
+use qcrab::{self};
 
 fn main() {
     let geomfile = "inp/geom.xyz";
     let mol = Molecule::load(geomfile);
-    let lens = bond_lengths(&mol);
-    let angs = bond_angles(&mol);
-    let opbs = oop_angles(&mol);
-    let tors = torsional_angles(&mol);
+    let lens = mol.bond_lengths();
+    let angs = mol.bond_angles();
+    let opbs = mol.oop_angles();
+    let tors = mol.torsional_angles();
     println!("{:?}, {:?}, {:?}, {:?}", lens, angs, opbs, tors);
 }

@@ -1,10 +1,8 @@
 use approx::{assert_abs_diff_eq, AbsDiffEq};
 use nalgebra as na;
 
-use crate::{
-    bond_angles, bond_lengths, oop_angles, torsional_angles, Angle, Bond,
-    Molecule, Tors,
-};
+use crate::molecule::Molecule;
+use crate::{Angle, Bond, Tors};
 
 impl AbsDiffEq for Bond {
     type Epsilon = f64;
@@ -35,29 +33,6 @@ impl AbsDiffEq for Angle {
     }
 }
 
-impl AbsDiffEq for Molecule {
-    type Epsilon = f64;
-
-    fn default_epsilon() -> Self::Epsilon {
-        1e-7
-    }
-
-    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        if self.zs != other.zs {
-            return false;
-        }
-        if self.coords.len() != other.coords.len() {
-            return false;
-        }
-        for (i, c) in self.coords.iter().enumerate() {
-            if (c - other.coords[i]).norm() > epsilon {
-                return false;
-            }
-        }
-        return true;
-    }
-}
-
 impl AbsDiffEq for Tors {
     type Epsilon = f64;
 
@@ -77,9 +52,9 @@ impl AbsDiffEq for Tors {
 #[test]
 fn test_read_geom() {
     let got = Molecule::load("inp/geom.xyz");
-    let want = Molecule {
-        zs: vec![6, 6, 8, 1, 1, 1, 1],
-        coords: vec![
+    let want = Molecule::new(
+        vec![6, 6, 8, 1, 1, 1, 1],
+        vec![
             na::vector![0.000000000000, 0.000000000000, 0.000000000000],
             na::vector![0.000000000000, 0.000000000000, 2.845112131228],
             na::vector![1.899115961744, 0.000000000000, 4.139062527233],
@@ -88,13 +63,13 @@ fn test_read_geom() {
             na::vector![-1.007295466862, -1.669971842687, -0.705916966833],
             na::vector![-1.007295466862, 1.669971842687, -0.705916966833],
         ],
-    };
+    );
     assert_eq!(got, want);
 }
 
 #[test]
 fn test_bond_lengths() {
-    let got = bond_lengths(&Molecule::load("inp/geom.xyz"));
+    let got = Molecule::load("inp/geom.xyz").bond_lengths();
     let want = na::dvector![
         Bond::new(1, 0, 2.84511),
         Bond::new(2, 0, 4.55395),
@@ -123,7 +98,7 @@ fn test_bond_lengths() {
 
 #[test]
 fn test_bond_angles() {
-    let got = bond_angles(&Molecule::load("inp/geom.xyz"));
+    let got = Molecule::load("inp/geom.xyz").bond_angles();
     let want = vec![
         Angle::new(2, 1, 0, 124.268308),
         Angle::new(3, 1, 0, 115.479341),
@@ -141,7 +116,7 @@ fn test_bond_angles() {
 
 #[test]
 fn test_op_angles() {
-    let got = oop_angles(&Molecule::load("inp/geom.xyz"));
+    let got = Molecule::load("inp/geom.xyz").oop_angles();
     let want = vec![
         Tors::new(0, 3, 1, 2, -0.000000),
         Tors::new(0, 6, 4, 5, 19.939726),
@@ -176,7 +151,7 @@ fn test_op_angles() {
 
 #[test]
 fn test_torsional_angles() {
-    let got = torsional_angles(&Molecule::load("inp/geom.xyz"));
+    let got = Molecule::load("inp/geom.xyz").torsional_angles();
     let want = vec![
         Tors::new(3, 2, 1, 0, 180.000000),
         Tors::new(6, 5, 4, 0, 36.366799),
@@ -200,9 +175,9 @@ fn test_translate() {
     let mut mol = Molecule::load("inp/geom.xyz");
     let com = mol.center_of_mass();
     mol.translate(com);
-    let want = Molecule {
-        zs: vec![6, 6, 8, 1, 1, 1, 1],
-        coords: vec![
+    let want = Molecule::new(
+        vec![6, 6, 8, 1, 1, 1, 1],
+        vec![
             na::vector![-0.644949260000, 0.000000000000, -2.316637920000],
             na::vector![-0.644949260000, 0.000000000000, 0.528474211228],
             na::vector![1.254166701744, 0.000000000000, 1.822424607233],
@@ -211,6 +186,6 @@ fn test_translate() {
             na::vector![-1.652244726862, -1.669971842687, -3.022554886833],
             na::vector![-1.652244726862, 1.669971842687, -3.022554886833],
         ],
-    };
+    );
     assert_abs_diff_eq!(mol, want);
 }

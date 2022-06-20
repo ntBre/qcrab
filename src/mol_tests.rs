@@ -212,8 +212,8 @@ fn test_rots() {
     mol.translate(com);
     let moi = mol.moi();
 
-    let evals = moi.eigenvalues().expect("failed to diagonalize moi");
-    let mut evals = Vec::from(evals.as_slice());
+    let mut evals = moi.eigenvalues().expect("failed to diagonalize moi");
+    let evals = evals.as_mut_slice();
     evals.sort_by(|a, b| b.partial_cmp(a).unwrap());
     dbg!(evals);
 }

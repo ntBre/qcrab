@@ -1,5 +1,7 @@
+use std::fs::read_to_string;
+
 use approx::{assert_abs_diff_eq, AbsDiffEq};
-use na::dvector;
+use na::{dvector, DVector};
 use nalgebra as na;
 
 use crate::molecule::Molecule;
@@ -68,33 +70,44 @@ fn test_read_geom() {
     assert_eq!(got, want);
 }
 
+fn load_bonds(filename: &str) -> na::DVector<Bond> {
+    let mut ret = Vec::new();
+    let data = read_to_string(filename).unwrap();
+    for line in data.lines() {
+        let split: Vec<_> = line.trim().split_whitespace().collect();
+        ret.push(Bond::new(
+            split[0].parse().unwrap(),
+            split[1].parse().unwrap(),
+            split[2].parse().unwrap(),
+        ))
+    }
+    DVector::from(ret)
+}
+
 #[test]
 fn test_bond_lengths() {
-    let got = Molecule::load("testfiles/acetaldehyde.dat").bond_lengths();
-    let want = na::dvector![
-        Bond::new(1, 0, 2.84511),
-        Bond::new(2, 0, 4.55395),
-        Bond::new(3, 0, 4.19912),
-        Bond::new(4, 0, 2.06517),
-        Bond::new(5, 0, 2.07407),
-        Bond::new(6, 0, 2.07407),
-        Bond::new(2, 1, 2.29803),
-        Bond::new(3, 1, 2.09811),
-        Bond::new(4, 1, 4.04342),
-        Bond::new(5, 1, 4.05133),
-        Bond::new(6, 1, 4.05133),
-        Bond::new(3, 2, 3.81330),
-        Bond::new(4, 2, 4.84040),
-        Bond::new(5, 2, 5.89151),
-        Bond::new(6, 2, 5.89151),
-        Bond::new(4, 3, 5.87463),
-        Bond::new(5, 3, 4.83836),
-        Bond::new(6, 3, 4.83836),
-        Bond::new(5, 4, 3.38971),
-        Bond::new(6, 4, 3.38971),
-        Bond::new(6, 5, 3.33994)
+    struct Test {
+        infile: &'static str,
+        want: na::DVector<Bond>,
+    }
+    let tests = vec![
+        Test {
+            infile: "testfiles/acetaldehyde.dat",
+            want: load_bonds("testfiles/acetaldehyde_bonds.dat"),
+        },
+        Test {
+            infile: "testfiles/benzene.dat",
+            want: load_bonds("testfiles/benzene_bonds.dat"),
+        },
+        Test {
+            infile: "testfiles/allene.dat",
+            want: load_bonds("testfiles/allene_bonds.dat"),
+        },
     ];
-    assert_abs_diff_eq!(na::DVector::from_row_slice(&got), want);
+    for test in tests {
+        let got = Molecule::load(test.infile).bond_lengths();
+        assert_abs_diff_eq!(na::DVector::from_row_slice(&got), test.want);
+    }
 }
 
 #[test]

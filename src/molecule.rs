@@ -121,8 +121,8 @@ impl Molecule {
         let mut ret = Vec::new();
         let len = mol.atoms.len();
         for i in 0..len {
-            for j in i + 1..len {
-                ret.push(Bond::new(j, i, mol.dist(i, j)));
+            for j in 0..i {
+                ret.push(Bond::new(i, j, mol.dist(i, j)));
             }
         }
         ret

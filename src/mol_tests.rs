@@ -208,11 +208,34 @@ fn test_moi() {
 
 #[test]
 fn test_rots() {
-    let mut mol = Molecule::load("testfiles/acetaldehyde.dat");
-    let com = mol.center_of_mass();
-    mol.translate(com);
-    let moi = mol.moi();
-    let got = mol.rots(&moi);
-    let want = dvector!(56461.542, 10102.130, 9052.169);
-    assert_abs_diff_eq!(Dvec::from(got), want, epsilon = 1e-3);
+    struct Test {
+        infile: &'static str,
+        want: Dvec,
+        eps: f64,
+    }
+    let tests = vec![
+        Test {
+            infile: "testfiles/acetaldehyde.dat",
+            want: dvector![56461.542, 10102.130, 9052.169],
+            eps: 1e-3,
+        },
+        Test {
+            infile: "testfiles/benzene.dat",
+            want: dvector![5791.637, 5791.636, 2895.818],
+            eps: 1e-3,
+        },
+        Test {
+            infile: "testfiles/allene.dat",
+            want: dvector![167151.728, 8558.659, 8558.659],
+            eps: 2e-3,
+        },
+    ];
+    for test in tests {
+        let mut mol = Molecule::load(test.infile);
+        let com = mol.center_of_mass();
+        mol.translate(com);
+        let moi = mol.moi();
+        let got = mol.rots(&moi);
+        assert_abs_diff_eq!(Dvec::from(got), test.want, epsilon = test.eps);
+    }
 }

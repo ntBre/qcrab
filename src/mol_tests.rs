@@ -52,7 +52,7 @@ impl AbsDiffEq for Tors {
 
 #[test]
 fn test_read_geom() {
-    let got = Molecule::load("inp/geom.xyz");
+    let got = Molecule::load("testfiles/acetaldehyde.dat");
     let want = Molecule::from_vecs(
         vec![6, 6, 8, 1, 1, 1, 1],
         vec![
@@ -70,7 +70,7 @@ fn test_read_geom() {
 
 #[test]
 fn test_bond_lengths() {
-    let got = Molecule::load("inp/geom.xyz").bond_lengths();
+    let got = Molecule::load("testfiles/acetaldehyde.dat").bond_lengths();
     let want = na::dvector![
         Bond::new(1, 0, 2.84511),
         Bond::new(2, 0, 4.55395),
@@ -99,7 +99,7 @@ fn test_bond_lengths() {
 
 #[test]
 fn test_bond_angles() {
-    let got = Molecule::load("inp/geom.xyz").bond_angles();
+    let got = Molecule::load("testfiles/acetaldehyde.dat").bond_angles();
     let want = vec![
         Angle::new(2, 1, 0, 124.268308),
         Angle::new(3, 1, 0, 115.479341),
@@ -117,7 +117,7 @@ fn test_bond_angles() {
 
 #[test]
 fn test_op_angles() {
-    let got = Molecule::load("inp/geom.xyz").oop_angles();
+    let got = Molecule::load("testfiles/acetaldehyde.dat").oop_angles();
     let want = vec![
         Tors::new(0, 3, 1, 2, -0.000000),
         Tors::new(0, 6, 4, 5, 19.939726),
@@ -152,7 +152,7 @@ fn test_op_angles() {
 
 #[test]
 fn test_torsional_angles() {
-    let got = Molecule::load("inp/geom.xyz").torsional_angles();
+    let got = Molecule::load("testfiles/acetaldehyde.dat").torsional_angles();
     let want = vec![
         Tors::new(3, 2, 1, 0, 180.000000),
         Tors::new(6, 5, 4, 0, 36.366799),
@@ -165,7 +165,7 @@ fn test_torsional_angles() {
 
 #[test]
 fn test_com() {
-    let mol = Molecule::load("inp/geom.xyz");
+    let mol = Molecule::load("testfiles/acetaldehyde.dat");
     let got = mol.center_of_mass();
     let want = na::vector![0.64494926, 0.00000000, 2.31663792];
     assert_abs_diff_eq!(got, want, epsilon = 2e-8);
@@ -173,7 +173,7 @@ fn test_com() {
 
 #[test]
 fn test_translate() {
-    let mut mol = Molecule::load("inp/geom.xyz");
+    let mut mol = Molecule::load("testfiles/acetaldehyde.dat");
     let com = mol.center_of_mass();
     mol.translate(com);
     let want = Molecule::from_vecs(
@@ -193,7 +193,7 @@ fn test_translate() {
 
 #[test]
 fn test_moi() {
-    let mut mol = Molecule::load("inp/geom.xyz");
+    let mut mol = Molecule::load("testfiles/acetaldehyde.dat");
     let com = mol.center_of_mass();
     mol.translate(com);
     let got = mol.moi();
@@ -208,7 +208,7 @@ fn test_moi() {
 
 #[test]
 fn test_rots() {
-    let mut mol = Molecule::load("inp/geom.xyz");
+    let mut mol = Molecule::load("testfiles/acetaldehyde.dat");
     let com = mol.center_of_mass();
     mol.translate(com);
     let moi = mol.moi();

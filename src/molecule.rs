@@ -1,8 +1,14 @@
 use na::Vector3;
 use nalgebra as na;
-use std::{fs::File, io::BufRead, io::BufReader, iter::zip};
+use std::{f64::consts::PI, fs::File, io::BufRead, io::BufReader, iter::zip};
 
 use crate::{Angle, Bond, Mat3, Tors, Vec3};
+
+const H: f64 = 6.626_070_15e-34; // J * s
+const C: f64 = 299_792_458.; // m / s
+const AMU: f64 = 1.660_539_066_60e-27; // kg
+const BOHR: f64 = 5.291_772_109_03e-11; // m
+const MOI: f64 = H / (8.0 * PI * PI * C);
 
 const PTABLE: [f64; 9] = [
     0.0,
@@ -258,6 +264,18 @@ impl Molecule {
         i[(Z, X)] = i[(X, Z)];
         i[(Z, Y)] = i[(Y, Z)];
         i
+    }
+
+    /// compute the rotational constants (in MHz) for `self` by diagonlizing the
+    /// moment of inertia matrix in `moi`
+    pub fn rots(&self, moi: &Mat3) -> Vec<f64> {
+        let mut evals = moi.eigenvalues().expect("failed to diagonalize moi");
+        let evals = evals.as_mut_slice();
+        evals.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        evals
+            .iter()
+            .map(|e| 1.0e-6 * C * MOI / (e * AMU * BOHR * BOHR))
+            .collect()
     }
 }
 

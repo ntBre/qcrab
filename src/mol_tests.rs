@@ -1,8 +1,9 @@
 use approx::{assert_abs_diff_eq, AbsDiffEq};
+use na::dvector;
 use nalgebra as na;
 
 use crate::molecule::Molecule;
-use crate::{Angle, Bond, Tors};
+use crate::{Angle, Bond, Dvec, Tors};
 
 impl AbsDiffEq for Bond {
     type Epsilon = f64;
@@ -211,9 +212,7 @@ fn test_rots() {
     let com = mol.center_of_mass();
     mol.translate(com);
     let moi = mol.moi();
-
-    let mut evals = moi.eigenvalues().expect("failed to diagonalize moi");
-    let evals = evals.as_mut_slice();
-    evals.sort_by(|a, b| b.partial_cmp(a).unwrap());
-    dbg!(evals);
+    let got = mol.rots(&moi);
+    let want = dvector!(56461.542, 10102.130, 9052.169);
+    assert_abs_diff_eq!(Dvec::from(got), want, epsilon = 1e-3);
 }

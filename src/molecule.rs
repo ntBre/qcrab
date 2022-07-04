@@ -131,25 +131,41 @@ impl Molecule {
     /// return all of the bond angles in mol for which the legs of the angle are
     /// less than 4.0 in degrees
     pub fn bond_angles(&self) -> Vec<Angle> {
-        let mol = self;
         let mut ret = Vec::new();
-        let len = mol.atoms.len();
+        let len = self.atoms.len();
         for i in 0..len {
-            for j in i + 1..len {
-                for k in j + 1..len {
-                    if mol.dist(i, j) > 4.0 || mol.dist(j, k) > 4.0 {
-                        continue;
+            for j in 0..i {
+                for k in 0..j {
+                    if self.dist(i, j) < 4.0 && self.dist(j, k) < 4.0 {
+                        ret.push(Angle::new(
+                            k,
+                            j,
+                            i,
+                            self.angle(i, j, k).to_degrees(),
+                        ));
                     }
-                    ret.push(Angle::new(
-                        k,
-                        j,
-                        i,
-                        mol.angle(i, j, k).to_degrees(),
-                    ));
                 }
             }
         }
         ret
+    }
+
+    pub fn oop(&self, i: usize, j: usize, k: usize, l: usize) -> Tors {
+        let atom = self.atoms[i].coord;
+        let btom = self.atoms[j].coord;
+        let ctom = self.atoms[k].coord;
+        let dtom = self.atoms[l].coord;
+        let ekj = unit(btom - ctom);
+        let ekl = unit(dtom - ctom);
+        let eki = unit(atom - ctom);
+        let pjkl = self.angle(j, k, l).sin();
+        let mut tmp = (ekj.cross(&ekl) / pjkl).dot(&eki);
+        if tmp < -1.0 {
+            tmp = -1.0;
+        } else if tmp > 1.0 {
+            tmp = 1.0;
+        }
+        Tors::new(i, j, k, l, tmp.asin().to_degrees())
     }
 
     /// Compute the out-of-plane angles for `mol`
@@ -170,27 +186,7 @@ impl Molecule {
                         {
                             continue;
                         }
-                        let atom = mol.atoms[i].coord;
-                        let btom = mol.atoms[j].coord;
-                        let ctom = mol.atoms[k].coord;
-                        let dtom = mol.atoms[l].coord;
-                        let ekl = unit(dtom - ctom);
-                        let eki = unit(atom - ctom);
-                        let ekj = unit(btom - ctom);
-                        let p_jkl = mol.angle(j, k, l).sin();
-                        let mut tmp = (ekj.cross(&ekl) / p_jkl).dot(&eki);
-                        if tmp < -1.0 {
-                            tmp = -1.0;
-                        } else if tmp > 1.0 {
-                            tmp = 1.0;
-                        }
-                        ret.push(Tors::new(
-                            i,
-                            j,
-                            k,
-                            l,
-                            tmp.asin().to_degrees(),
-                        ));
+                        ret.push(self.oop(i, j, k, l));
                     }
                 }
             }

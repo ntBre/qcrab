@@ -110,70 +110,130 @@ fn test_bond_lengths() {
     }
 }
 
+fn load_angles(filename: &str) -> na::DVector<Angle> {
+    let mut ret = Vec::new();
+    let data = read_to_string(filename).unwrap();
+    for line in data.lines() {
+        let split: Vec<_> = line.trim().split_whitespace().collect();
+        ret.push(Angle::new(
+            split[0].parse().unwrap(),
+            split[1].parse().unwrap(),
+            split[2].parse().unwrap(),
+            split[3].parse().unwrap(),
+        ))
+    }
+    DVector::from(ret)
+}
+
 #[test]
 fn test_bond_angles() {
-    let got = Molecule::load("testfiles/acetaldehyde.dat").bond_angles();
-    let want = vec![
-        Angle::new(2, 1, 0, 124.268308),
-        Angle::new(3, 1, 0, 115.479341),
-        Angle::new(5, 4, 0, 35.109529),
-        Angle::new(6, 4, 0, 35.109529),
-        Angle::new(6, 5, 0, 36.373677),
-        Angle::new(3, 2, 1, 28.377448),
-        Angle::new(6, 5, 4, 60.484476),
+    struct Test {
+        infile: &'static str,
+        want: na::DVector<Angle>,
+    }
+
+    impl Test {
+        fn new(infile: &'static str, want: na::DVector<Angle>) -> Self {
+            Self { infile, want }
+        }
+    }
+    let tests = [
+        Test::new(
+            "testfiles/acetaldehyde.dat",
+            load_angles("testfiles/acetaldehyde_angles.dat"),
+        ),
+        Test::new(
+            "testfiles/benzene.dat",
+            load_angles("testfiles/benzene_angles.dat"),
+        ),
+        Test::new(
+            "testfiles/allene.dat",
+            load_angles("testfiles/allene_angles.dat"),
+        ),
     ];
-    assert_abs_diff_eq!(
-        na::DVector::from_row_slice(&got),
-        na::DVector::from_row_slice(&want)
-    );
+    for test in tests {
+        let got = Molecule::load(test.infile).bond_angles();
+        assert_eq!(got.len(), test.want.len());
+        assert_abs_diff_eq!(
+            na::DVector::from_row_slice(&got),
+            test.want,
+            epsilon = 1e-6
+        );
+    }
+}
+
+fn load_oop(filename: &str) -> na::DVector<Tors> {
+    let mut ret = Vec::new();
+    let data = read_to_string(filename).unwrap();
+    for line in data.lines() {
+        let split: Vec<_> = line.trim().split_whitespace().collect();
+        ret.push(Tors::new(
+            split[0].parse().unwrap(),
+            split[1].parse().unwrap(),
+            split[2].parse().unwrap(),
+            split[3].parse().unwrap(),
+            split[4].parse().unwrap(),
+        ))
+    }
+    DVector::from(ret)
+}
+
+struct OopTest {
+    infile: &'static str,
+    want: DVector<Tors>,
+}
+
+impl OopTest {
+    fn new(infile: &'static str, want: DVector<Tors>) -> Self {
+        Self { infile, want }
+    }
 }
 
 #[test]
 fn test_op_angles() {
-    let got = Molecule::load("testfiles/acetaldehyde.dat").oop_angles();
-    let want = vec![
-        Tors::new(0, 3, 1, 2, -0.000000),
-        Tors::new(0, 6, 4, 5, 19.939726),
-        Tors::new(0, 6, 5, 4, -19.850523),
-        Tors::new(0, 5, 6, 4, 19.850523),
-        Tors::new(1, 5, 0, 4, 53.678778),
-        Tors::new(1, 6, 0, 4, -53.678778),
-        Tors::new(1, 6, 0, 5, 54.977064),
-        Tors::new(2, 3, 1, 0, 0.000000),
-        Tors::new(3, 2, 1, 0, -0.000000),
-        Tors::new(4, 5, 0, 1, -53.651534),
-        Tors::new(4, 6, 0, 1, 53.651534),
-        Tors::new(4, 6, 0, 5, -54.869992),
-        Tors::new(4, 6, 5, 0, 29.885677),
-        Tors::new(4, 5, 6, 0, -29.885677),
-        Tors::new(5, 4, 0, 1, 53.626323),
-        Tors::new(5, 6, 0, 1, -56.277112),
-        Tors::new(5, 6, 0, 4, 56.194621),
-        Tors::new(5, 6, 4, 0, -30.558964),
-        Tors::new(5, 4, 6, 0, 31.064344),
-        Tors::new(6, 4, 0, 1, -53.626323),
-        Tors::new(6, 5, 0, 1, 56.277112),
-        Tors::new(6, 5, 0, 4, -56.194621),
-        Tors::new(6, 5, 4, 0, 30.558964),
-        Tors::new(6, 4, 5, 0, -31.064344),
+    let tests = [
+        OopTest::new(
+            "testfiles/acetaldehyde.dat",
+            load_oop("testfiles/acetaldehyde_oop.dat"),
+        ),
+        OopTest::new(
+            "testfiles/benzene.dat",
+            load_oop("testfiles/benzene_oop.dat"),
+        ),
+        OopTest::new(
+            "testfiles/allene.dat",
+            load_oop("testfiles/allene_oop.dat"),
+        ),
     ];
-    assert_abs_diff_eq!(
-        na::DVector::from_row_slice(&got),
-        na::DVector::from_row_slice(&want)
-    );
+    for test in tests {
+        let got = Molecule::load(test.infile).oop_angles();
+        assert_eq!(got.len(), test.want.len());
+        assert_abs_diff_eq!(na::DVector::from_row_slice(&got), test.want);
+    }
 }
 
 #[test]
 fn test_torsional_angles() {
-    let got = Molecule::load("testfiles/acetaldehyde.dat").torsional_angles();
-    let want = vec![
-        Tors::new(3, 2, 1, 0, 180.000000),
-        Tors::new(6, 5, 4, 0, 36.366799),
+    let tests = [
+        OopTest::new(
+            "testfiles/acetaldehyde.dat",
+            load_oop("testfiles/acetaldehyde_tors.dat"),
+        ),
+        OopTest::new(
+            "testfiles/benzene.dat",
+            load_oop("testfiles/benzene_tors.dat"),
+        ),
+        OopTest::new(
+            "testfiles/allene.dat",
+            load_oop("testfiles/allene_tors.dat"),
+        ),
     ];
-    assert_abs_diff_eq!(
-        na::DVector::from_row_slice(&got),
-        na::DVector::from_row_slice(&want)
-    );
+    for test in tests {
+        let got = na::DVector::from_row_slice(
+            &Molecule::load(test.infile).torsional_angles(),
+        );
+        assert_abs_diff_eq!(got, test.want, epsilon = 3e-6);
+    }
 }
 
 #[test]

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use nalgebra as na;
 
 #[cfg(test)]
@@ -17,6 +19,12 @@ pub struct Bond {
     val: f64,
 }
 
+impl Display for Bond {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:5}{:5}{:8.5}", self.i, self.j, self.val)
+    }
+}
+
 impl Bond {
     pub fn new(i: usize, j: usize, val: f64) -> Self {
         Self { i, j, val }
@@ -29,6 +37,12 @@ pub struct Angle {
     j: usize,
     k: usize,
     val: f64,
+}
+
+impl Display for Angle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:5}{:5}{:5}{:11.6}", self.i, self.j, self.k, self.val)
+    }
 }
 
 impl Angle {
@@ -44,6 +58,16 @@ pub struct Tors {
     k: usize,
     l: usize,
     val: f64,
+}
+
+impl Display for Tors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{:5}{:5}{:5}{:5}{:11.6}",
+            self.i, self.j, self.k, self.l, self.val
+        )
+    }
 }
 
 impl Tors {

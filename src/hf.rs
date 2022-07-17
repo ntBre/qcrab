@@ -92,6 +92,17 @@ pub fn density(fock: &Dmat, s12: &Dmat, nelec: usize) -> Dmat {
     ret
 }
 
+pub fn energy(dens: &Dmat, hcore: &Dmat, fock: &Dmat) -> f64 {
+    let mut energy = 0.0;
+    let (r, c) = dens.shape();
+    for i in 0..r {
+        for j in 0..c {
+            energy += dens[(i, j)] * (hcore[(i, j)] + fock[(i, j)]);
+        }
+    }
+    energy
+}
+
 #[cfg(test)]
 mod tests {
     use approx::{abs_diff_eq, assert_abs_diff_eq};
@@ -172,14 +183,35 @@ mod tests {
         let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
         let got = density(&fock, &s12, mol.nelec());
         let want = dmatrix![
-         1.0650117,  -0.2852166,  -0.0000000,  -0.0195534,  -0.0000000,   0.0334496,   0.0334496;
-        -0.2852166,   1.2489657,   0.0000000,   0.1135594,   0.0000000,  -0.1442809,  -0.1442809;
-        -0.0000000,   0.0000000,   1.1258701,  -0.0000000,  -0.0000000,  -0.1461317,   0.1461317;
-        -0.0195534,   0.1135594,  -0.0000000,   1.0660638,   0.0000000,  -0.0993583,  -0.0993583;
-        -0.0000000,   0.0000000,  -0.0000000,   0.0000000,   1.0000000,  -0.0000000,  -0.0000000;
-         0.0334496,  -0.1442809,  -0.1461317,  -0.0993583,  -0.0000000,   0.0426802,   0.0047460;
-         0.0334496,  -0.1442809,   0.1461317,  -0.0993583,  -0.0000000,   0.0047460,   0.0426802;
+            1.0650117,  -0.2852166,  -0.0000000,  -0.0195534,  -0.0000000,
+        0.0334496,   0.0334496;
+            -0.2852166,   1.2489657,   0.0000000,   0.1135594,   0.0000000,
+        -0.1442809,  -0.1442809;
+            -0.0000000,   0.0000000,   1.1258701,  -0.0000000,  -0.0000000,
+        -0.1461317,   0.1461317;
+            -0.0195534,   0.1135594,  -0.0000000,   1.0660638,   0.0000000,
+        -0.0993583,  -0.0993583;
+            -0.0000000,   0.0000000,  -0.0000000,   0.0000000,   1.0000000,
+        -0.0000000,  -0.0000000;
+            0.0334496,  -0.1442809,  -0.1461317,  -0.0993583,  -0.0000000,
+        0.0426802,   0.0047460;
+            0.0334496,  -0.1442809,   0.1461317,  -0.0993583,  -0.0000000,
+        0.0047460,   0.0426802;
           ];
         assert_abs_diff_eq!(got, want, epsilon = 1e-7);
+    }
+
+    #[test]
+    fn test_scf_init() {
+        let hcore = kinetic_integrals("testfiles/h2o/STO-3G/t.dat")
+            + attraction_integrals("testfiles/h2o/STO-3G/v.dat");
+        let s12 = build_orthog_matrix(overlap_integrals(
+            "testfiles/h2o/STO-3G/s.dat",
+        ));
+        let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
+        let d = density(&hcore, &s12, mol.nelec());
+        let got = energy(&d, &hcore, &hcore);
+        let want = -125.842077437699;
+        assert_abs_diff_eq!(got, want, epsilon = 1e-12);
     }
 }

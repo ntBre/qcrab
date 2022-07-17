@@ -57,14 +57,6 @@ pub fn build_orthog_matrix(s: Dmat) -> Dmat {
     let (r, c) = s.shape();
     let sym = SymmetricEigen::new(s);
     let ls = sym.eigenvectors;
-    // let lambda = sym.eigenvalues;
-    // sort the eigenvalues and then the eigenvectors correspondingly
-    // let mut pairs: Vec<_> = lambda.iter().enumerate().collect();
-    // pairs.sort_by(|(_, a), (_, b)| a.partial_cmp(&b).unwrap());
-    // let mut mat = Dmat::zeros(r, c);
-    // for i in 0..3 {
-    //     mat.set_column(i, &ls.column(pairs[i].0));
-    // }
     let mut lambda = Dmat::zeros(r, c);
     assert_eq!(r, c);
     for i in 0..r {

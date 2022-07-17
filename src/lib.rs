@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::fmt::Display;
 
 use nalgebra as na;
@@ -7,6 +8,8 @@ mod mol_tests;
 
 pub mod hf;
 pub mod molecule;
+
+mod eri;
 
 type Vec3 = na::Vector3<f64>;
 type Mat3 = na::Matrix3<f64>;

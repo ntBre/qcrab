@@ -1,10 +1,11 @@
 use std::{
     fs::read_to_string,
     io::{BufRead, BufReader},
-    ops::Index,
 };
 
-use crate::Dmat;
+use nalgebra::SymmetricEigen;
+
+use crate::{Dmat, Mat3};
 
 // TODO eventually take a Molecule, not a filename
 pub fn nuclear_repulsion(filename: &str) -> f64 {
@@ -52,60 +53,32 @@ pub fn attraction_integrals(filename: &str) -> Dmat {
     load_sym_matrix(filename)
 }
 
-struct Eri {
-    inner: Vec<f64>,
-}
-
-impl Index<(usize, usize, usize, usize)> for Eri {
-    type Output = f64;
-
-    fn index(&self, index: (usize, usize, usize, usize)) -> &Self::Output {
-        let (m, n, l, s) = index;
-        &self.inner[Self::index_inner(m, n, l, s)]
+pub fn build_orthog_matrix(s: Dmat) -> Dmat {
+    let (r, c) = s.shape();
+    let sym = SymmetricEigen::new(s);
+    let ls = sym.eigenvectors;
+    // let lambda = sym.eigenvalues;
+    // sort the eigenvalues and then the eigenvectors correspondingly
+    // let mut pairs: Vec<_> = lambda.iter().enumerate().collect();
+    // pairs.sort_by(|(_, a), (_, b)| a.partial_cmp(&b).unwrap());
+    // let mut mat = Dmat::zeros(r, c);
+    // for i in 0..3 {
+    //     mat.set_column(i, &ls.column(pairs[i].0));
+    // }
+    let mut lambda = Dmat::zeros(r, c);
+    assert_eq!(r, c);
+    for i in 0..r {
+        lambda[(i, i)] = 1.0 / sym.eigenvalues[i].sqrt();
     }
-}
-
-impl Eri {
-    /// returns the compound index associated with `m`, `n`, `l`, and `s`
-    fn index_inner(m: usize, n: usize, l: usize, s: usize) -> usize {
-        let compound = |a: usize, b: usize| a * (a + 1) / 2 + b;
-        let compare = |a: usize, b: usize| if a < b { (b, a) } else { (a, b) };
-        let (m, n) = compare(m, n);
-        let (l, s) = compare(l, s);
-        let mn = compound(m, n);
-        let ls = compound(l, s);
-        let (mn, ls) = compare(mn, ls);
-        compound(mn, ls)
-    }
-
-    pub fn new(filename: &str) -> Self {
-        let mut inner = Vec::new();
-        let f = std::fs::File::open(filename).unwrap();
-        let lines = BufReader::new(f).lines();
-        for line in lines.flatten() {
-            let split: Vec<_> = line.split_whitespace().collect();
-            if split.len() != 5 {
-                continue;
-            }
-            let m: usize = split[0].parse().unwrap();
-            let n: usize = split[1].parse().unwrap();
-            let l: usize = split[2].parse().unwrap();
-            let s: usize = split[3].parse().unwrap();
-            let v: f64 = split[4].parse().unwrap();
-            let index = Self::index_inner(m - 1, n - 1, l - 1, s - 1);
-            if index >= inner.len() {
-                inner.resize(index + 1, 0.0);
-            }
-            inner[index] = v;
-        }
-        Self { inner }
-    }
+    ls.clone() * lambda * ls.transpose()
 }
 
 #[cfg(test)]
 mod tests {
     use approx::assert_abs_diff_eq;
     use nalgebra::dmatrix;
+
+    use crate::eri::Eri;
 
     use super::*;
 
@@ -144,5 +117,29 @@ mod tests {
     #[test]
     fn test_new_fock() {
         let _eri = Eri::new("testfiles/h2o/STO-3G/eri.dat");
+    }
+
+    #[test]
+    fn test_orthog() {
+        let got = build_orthog_matrix(overlap_integrals(
+            "testfiles/h2o/STO-3G/s.dat",
+        ));
+        let want = dmatrix![
+            1.0236346,  -0.1368547,  -0.0000000,  -0.0074873,  -0.0000000,
+        0.0190279,   0.0190279;
+            -0.1368547,   1.1578632,   0.0000000,   0.0721601,   0.0000000,
+        -0.2223326,  -0.2223326;
+            -0.0000000,   0.0000000,   1.0733148,   0.0000000,  -0.0000000,
+        -0.1757583,   0.1757583;
+            -0.0074873,   0.0721601,   0.0000000,   1.0383050,   0.0000000,
+        -0.1184626,  -0.1184626;
+            -0.0000000,   0.0000000,  -0.0000000,   0.0000000,   1.0000000,
+        -0.0000000,  -0.0000000;
+            0.0190279,  -0.2223326,  -0.1757583,  -0.1184626,  -0.0000000,
+        1.1297234,  -0.0625975;
+            0.0190279,  -0.2223326,   0.1757583,  -0.1184626,  -0.0000000,
+        -0.0625975,   1.1297234;
+          ];
+        assert_abs_diff_eq!(got, want, epsilon = 1e-7);
     }
 }

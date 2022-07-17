@@ -49,6 +49,10 @@ impl Molecule {
         Self { atoms }
     }
 
+    pub fn nelec(&self) -> usize {
+        self.atoms.iter().map(|a| a.atomic_number).sum()
+    }
+
     pub fn from_vecs(zs: Vec<usize>, coords: Vec<Vec3>) -> Self {
         let mut ret = Self::default();
         assert_eq!(zs.len(), coords.len());

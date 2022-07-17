@@ -65,12 +65,39 @@ pub fn build_orthog_matrix(s: Dmat) -> Dmat {
     ls.clone() * lambda * ls.transpose()
 }
 
+pub fn density(fock: &Dmat, s12: &Dmat, nelec: usize) -> Dmat {
+    let f0 = s12.transpose() * fock * s12;
+    let sym = SymmetricEigen::new(f0.clone());
+    let vecs = sym.eigenvectors;
+    let vals = sym.eigenvalues;
+    // this is wrong for open shells
+    let nocc = nelec / 2;
+    // sort the eigenvalues and then the eigenvectors correspondingly
+    let mut pairs: Vec<_> = vals.iter().enumerate().collect();
+    pairs.sort_by(|(_, a), (_, b)| a.partial_cmp(&b).unwrap());
+    let (rows, cols) = f0.shape();
+    let mut c0p = Dmat::zeros(rows, cols);
+    for i in 0..cols {
+        c0p.set_column(i, &vecs.column(pairs[i].0));
+    }
+    let c0 = s12 * c0p.clone();
+    let mut ret = Dmat::zeros(rows, cols);
+    for mu in 0..rows {
+        for nu in 0..cols {
+            for m in 0..nocc {
+                ret[(mu, nu)] += c0[(mu, m)] * c0[(nu, m)];
+            }
+        }
+    }
+    ret
+}
+
 #[cfg(test)]
 mod tests {
-    use approx::assert_abs_diff_eq;
+    use approx::{abs_diff_eq, assert_abs_diff_eq};
     use nalgebra::dmatrix;
 
-    use crate::eri::Eri;
+    use crate::{eri::Eri, molecule::Molecule};
 
     use super::*;
 
@@ -130,7 +157,28 @@ mod tests {
             0.0190279,  -0.2223326,  -0.1757583,  -0.1184626,  -0.0000000,
         1.1297234,  -0.0625975;
             0.0190279,  -0.2223326,   0.1757583,  -0.1184626,  -0.0000000,
-        -0.0625975,   1.1297234;
+        -0.0625976,   1.1297234;
+          ];
+        assert_abs_diff_eq!(got, want, epsilon = 1e-7);
+    }
+
+    #[test]
+    fn test_density() {
+        let fock = kinetic_integrals("testfiles/h2o/STO-3G/t.dat")
+            + attraction_integrals("testfiles/h2o/STO-3G/v.dat");
+        let s12 = build_orthog_matrix(overlap_integrals(
+            "testfiles/h2o/STO-3G/s.dat",
+        ));
+        let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
+        let got = density(&fock, &s12, mol.nelec());
+        let want = dmatrix![
+         1.0650117,  -0.2852166,  -0.0000000,  -0.0195534,  -0.0000000,   0.0334496,   0.0334496;
+        -0.2852166,   1.2489657,   0.0000000,   0.1135594,   0.0000000,  -0.1442809,  -0.1442809;
+        -0.0000000,   0.0000000,   1.1258701,  -0.0000000,  -0.0000000,  -0.1461317,   0.1461317;
+        -0.0195534,   0.1135594,  -0.0000000,   1.0660638,   0.0000000,  -0.0993583,  -0.0993583;
+        -0.0000000,   0.0000000,  -0.0000000,   0.0000000,   1.0000000,  -0.0000000,  -0.0000000;
+         0.0334496,  -0.1442809,  -0.1461317,  -0.0993583,  -0.0000000,   0.0426802,   0.0047460;
+         0.0334496,  -0.1442809,   0.1461317,  -0.0993583,  -0.0000000,   0.0047460,   0.0426802;
           ];
         assert_abs_diff_eq!(got, want, epsilon = 1e-7);
     }

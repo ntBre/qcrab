@@ -5,7 +5,7 @@ use std::{
 
 use nalgebra::SymmetricEigen;
 
-use crate::{eri::Eri, Dmat, Mat3};
+use crate::{eri::Eri, molecule::Molecule, Dmat, Mat3};
 
 // TODO eventually take a Molecule, not a filename
 pub fn nuclear_repulsion(filename: &str) -> f64 {
@@ -120,6 +120,50 @@ fn fock(dens: &Dmat, hcore: &Dmat, eri: &Eri) -> Dmat {
     fock
 }
 
+const MAX_ITER: usize = 5;
+
+fn rmsd(dnew: &Dmat, dold: &Dmat) -> f64 {
+    (dnew - dold).norm()
+}
+
+/// run the scf procedure and return the final energy
+pub fn do_scf(
+    hcore: &Dmat,
+    s12: &Dmat,
+    eri: &Eri,
+    nelec: usize,
+    d1: f64,
+    d2: f64,
+) -> f64 {
+    // compute the initial guess density
+    println!(
+        "\n{:<5}{:^21}{:^21}{:^21}",
+        "Iter", "E(elec)", "Delta(E)", "RMSD"
+    );
+    let mut e_old = 0.0;
+    let mut r_old = 0.0;
+    let mut f = hcore.clone();
+    let mut d = density(&f, &s12, nelec);
+    let mut d_old = d.clone();
+    let mut de = 2.0 * d1;
+    let mut drmsd = 2.0 * d2;
+    let mut iter = 0;
+    while de.abs() > d1 || drmsd.abs() > d2 {
+        let e = energy(&d, &hcore, &f);
+        f = fock(&d, &hcore, &eri);
+        let r = rmsd(&d, &d_old);
+        de = e - e_old;
+        drmsd = r - r_old;
+        println!("{:5}{:21.12}{:21.12}{:21.12}", iter, e, de, r);
+        d_old = d;
+        d = density(&f, &s12, nelec);
+        e_old = e;
+        r_old = r;
+        iter += 1;
+    }
+    e_old
+}
+
 #[cfg(test)]
 mod tests {
     use approx::{abs_diff_eq, assert_abs_diff_eq};
@@ -159,11 +203,6 @@ mod tests {
         -1.0711459,  -4.5401711;
            ];
         assert_abs_diff_eq!(got, want, epsilon = 1e-7);
-    }
-
-    #[test]
-    fn test_new_fock() {
-        let _eri = Eri::new("testfiles/h2o/STO-3G/eri.dat");
     }
 
     #[test]
@@ -244,14 +283,35 @@ mod tests {
         let eri = Eri::new("testfiles/h2o/STO-3G/eri.dat");
         let got = fock(&d, &hcore, &eri);
         let want = dmatrix![
-        -18.8132695,  -4.8726875,  -0.0000000,  -0.0115290,   0.0000000,  -0.8067323,  -0.8067323;
-         -4.8726875,  -1.7909029,  -0.0000000,  -0.1808692,   0.0000000,  -0.5790557,  -0.5790557;
-         -0.0000000,  -0.0000000,   0.1939644,   0.0000000,   0.0000000,  -0.1708886,   0.1708886;
-         -0.0115290,  -0.1808692,   0.0000000,   0.2391247,   0.0000000,  -0.1828683,  -0.1828683;
-          0.0000000,   0.0000000,   0.0000000,   0.0000000,   0.3091071,   0.0000000,   0.0000000;
-         -0.8067323,  -0.5790557,  -0.1708886,  -0.1828683,   0.0000000,  -0.1450338,  -0.1846675;
-         -0.8067323,  -0.5790557,   0.1708886,  -0.1828683,   0.0000000,  -0.1846675,  -0.1450338;
+            -18.8132695,  -4.8726875,  -0.0000000,  -0.0115290,   0.0000000,
+        -0.8067323,  -0.8067323;
+            -4.8726875,  -1.7909029,  -0.0000000,  -0.1808692,   0.0000000,
+        -0.5790557,  -0.5790557;
+            -0.0000000,  -0.0000000,   0.1939644,   0.0000000,   0.0000000,
+        -0.1708886,   0.1708886;
+            -0.0115290,  -0.1808692,   0.0000000,   0.2391247,   0.0000000,
+        -0.1828683,  -0.1828683;
+            0.0000000,   0.0000000,   0.0000000,   0.0000000,   0.3091071,
+        0.0000000,   0.0000000;
+            -0.8067323,  -0.5790557,  -0.1708886,  -0.1828683,   0.0000000,
+        -0.1450338,  -0.1846675;
+            -0.8067323,  -0.5790557,   0.1708886,  -0.1828683,   0.0000000,
+        -0.1846675,  -0.1450338;
            ];
         assert_abs_diff_eq!(got, want, epsilon = 1e-7);
+    }
+
+    #[test]
+    fn test_do_scf() {
+        let hcore = kinetic_integrals("testfiles/h2o/STO-3G/t.dat")
+            + attraction_integrals("testfiles/h2o/STO-3G/v.dat");
+        let s12 = build_orthog_matrix(overlap_integrals(
+            "testfiles/h2o/STO-3G/s.dat",
+        ));
+        let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
+        let eri = Eri::new("testfiles/h2o/STO-3G/eri.dat");
+        let got = do_scf(&hcore, &s12, &eri, mol.nelec(), 1e-12, 7e-12);
+        let want = -82.944446990003;
+        assert_abs_diff_eq!(got, want, epsilon = 1e-12);
     }
 }

@@ -3,7 +3,7 @@ use std::{
     ops::Index,
 };
 
-pub(crate) struct Eri {
+pub struct Eri {
     inner: Vec<f64>,
 }
 

@@ -1,6 +1,7 @@
 use std::{
     fs::read_to_string,
     io::{BufRead, BufReader},
+    path::Path,
 };
 
 use nalgebra::SymmetricEigen;
@@ -13,7 +14,7 @@ pub fn nuclear_repulsion(filename: &str) -> f64 {
     data.trim().parse().unwrap()
 }
 
-pub fn load_sym_matrix(filename: &str) -> Dmat {
+pub fn load_sym_matrix<P: AsRef<Path>>(filename: P) -> Dmat {
     let f = std::fs::File::open(filename).unwrap();
     let f = BufReader::new(f).lines();
     let mut rows = 1;
@@ -41,15 +42,15 @@ pub fn load_sym_matrix(filename: &str) -> Dmat {
     ret
 }
 
-pub fn overlap_integrals(filename: &str) -> Dmat {
+pub fn overlap_integrals<P: AsRef<Path>>(filename: P) -> Dmat {
     load_sym_matrix(filename)
 }
 
-pub fn kinetic_integrals(filename: &str) -> Dmat {
+pub fn kinetic_integrals<P: AsRef<Path>>(filename: P) -> Dmat {
     load_sym_matrix(filename)
 }
 
-pub fn attraction_integrals(filename: &str) -> Dmat {
+pub fn attraction_integrals<P: AsRef<Path>>(filename: P) -> Dmat {
     load_sym_matrix(filename)
 }
 
@@ -166,6 +167,8 @@ pub fn do_scf(
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use approx::{abs_diff_eq, assert_abs_diff_eq};
     use nalgebra::dmatrix;
 
@@ -303,15 +306,37 @@ mod tests {
 
     #[test]
     fn test_do_scf() {
-        let hcore = kinetic_integrals("testfiles/h2o/STO-3G/t.dat")
-            + attraction_integrals("testfiles/h2o/STO-3G/v.dat");
-        let s12 = build_orthog_matrix(overlap_integrals(
-            "testfiles/h2o/STO-3G/s.dat",
-        ));
-        let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
-        let eri = Eri::new("testfiles/h2o/STO-3G/eri.dat");
-        let got = do_scf(&hcore, &s12, &eri, mol.nelec(), 1e-12, 7e-12);
-        let want = -82.944446990003;
-        assert_abs_diff_eq!(got, want, epsilon = 1e-12);
+        struct Test {
+            dir: &'static str,
+            want: f64,
+        }
+        let tests = [
+            Test {
+                dir: "testfiles/h2o/STO-3G",
+                want: -82.944446990003,
+            },
+            Test {
+                dir: "testfiles/h2o/DZ",
+                want: -83.980246037187,
+            },
+            Test {
+                dir: "testfiles/h2o/DZP",
+                want: -84.011188854711,
+            },
+            Test {
+                dir: "testfiles/ch4/STO-3G",
+                want: -53.224154786383,
+            },
+        ];
+        for test in tests {
+            let dir = Path::new(test.dir);
+            let hcore = kinetic_integrals(dir.join("t.dat"))
+                + attraction_integrals(dir.join("v.dat"));
+            let s12 = build_orthog_matrix(overlap_integrals(dir.join("s.dat")));
+            let mol = Molecule::load(dir.join("geom.dat"));
+            let eri = Eri::new(dir.join("eri.dat"));
+            let got = do_scf(&hcore, &s12, &eri, mol.nelec(), 1e-12, 7e-12);
+            assert_abs_diff_eq!(got, test.want, epsilon = 1e-12);
+        }
     }
 }

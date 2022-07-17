@@ -1,6 +1,7 @@
 use std::{
     io::{BufRead, BufReader},
     ops::Index,
+    path::Path,
 };
 
 pub struct Eri {
@@ -29,7 +30,7 @@ impl Eri {
         compound(mn, ls)
     }
 
-    pub fn new(filename: &str) -> Self {
+    pub fn new<P: AsRef<Path>>(filename: P) -> Self {
         let mut inner = Vec::new();
         let f = std::fs::File::open(filename).unwrap();
         let lines = BufReader::new(f).lines();

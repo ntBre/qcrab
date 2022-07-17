@@ -1,6 +1,9 @@
 use na::Vector3;
 use nalgebra as na;
-use std::{f64::consts::PI, fs::File, io::BufRead, io::BufReader, iter::zip};
+use std::{
+    f64::consts::PI, fs::File, io::BufRead, io::BufReader, iter::zip,
+    path::Path,
+};
 
 use crate::{Angle, Bond, Mat3, Tors, Vec3};
 
@@ -65,7 +68,7 @@ impl Molecule {
         ret
     }
 
-    pub fn load(geomfile: &str) -> Self {
+    pub fn load<P: AsRef<Path>>(geomfile: P) -> Self {
         let f = File::open(geomfile).expect("failed to open geomfile");
         let lines = BufReader::new(f).lines().flatten().skip(1);
         let mut mol = Molecule::default();

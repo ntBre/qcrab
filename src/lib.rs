@@ -5,12 +5,13 @@ use nalgebra as na;
 #[cfg(test)]
 mod mol_tests;
 
+pub mod hf;
 pub mod molecule;
 
 type Vec3 = na::Vector3<f64>;
 type Mat3 = na::Matrix3<f64>;
-#[allow(unused)] // TODO get rid of this
 type Dvec = na::DVector<f64>;
+type Dmat = na::DMatrix<f64>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Bond {

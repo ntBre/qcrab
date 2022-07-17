@@ -4,6 +4,8 @@ use std::fmt::Display;
 use nalgebra as na;
 
 #[cfg(test)]
+mod hf_tests;
+#[cfg(test)]
 mod mol_tests;
 
 pub mod hf;

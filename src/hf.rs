@@ -5,7 +5,7 @@ use std::{
 
 use nalgebra::SymmetricEigen;
 
-use crate::{Dmat, Mat3};
+use crate::{eri::Eri, Dmat, Mat3};
 
 // TODO eventually take a Molecule, not a filename
 pub fn nuclear_repulsion(filename: &str) -> f64 {
@@ -101,6 +101,23 @@ pub fn energy(dens: &Dmat, hcore: &Dmat, fock: &Dmat) -> f64 {
         }
     }
     energy
+}
+
+fn fock(dens: &Dmat, hcore: &Dmat, eri: &Eri) -> Dmat {
+    let (r, c) = hcore.shape();
+    assert_eq!(r, c);
+    let mut fock = hcore.clone();
+    for m in 0..r {
+        for n in 0..r {
+            for l in 0..r {
+                for s in 0..r {
+                    fock[(m, n)] += dens[(l, s)]
+                        * (2.0 * eri[(m, n, l, s)] - eri[(m, l, n, s)]);
+                }
+            }
+        }
+    }
+    fock
 }
 
 #[cfg(test)]
@@ -213,5 +230,28 @@ mod tests {
         let got = energy(&d, &hcore, &hcore);
         let want = -125.842077437699;
         assert_abs_diff_eq!(got, want, epsilon = 1e-12);
+    }
+
+    #[test]
+    fn test_fock() {
+        let hcore = kinetic_integrals("testfiles/h2o/STO-3G/t.dat")
+            + attraction_integrals("testfiles/h2o/STO-3G/v.dat");
+        let s12 = build_orthog_matrix(overlap_integrals(
+            "testfiles/h2o/STO-3G/s.dat",
+        ));
+        let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
+        let d = density(&hcore, &s12, mol.nelec());
+        let eri = Eri::new("testfiles/h2o/STO-3G/eri.dat");
+        let got = fock(&d, &hcore, &eri);
+        let want = dmatrix![
+        -18.8132695,  -4.8726875,  -0.0000000,  -0.0115290,   0.0000000,  -0.8067323,  -0.8067323;
+         -4.8726875,  -1.7909029,  -0.0000000,  -0.1808692,   0.0000000,  -0.5790557,  -0.5790557;
+         -0.0000000,  -0.0000000,   0.1939644,   0.0000000,   0.0000000,  -0.1708886,   0.1708886;
+         -0.0115290,  -0.1808692,   0.0000000,   0.2391247,   0.0000000,  -0.1828683,  -0.1828683;
+          0.0000000,   0.0000000,   0.0000000,   0.0000000,   0.3091071,   0.0000000,   0.0000000;
+         -0.8067323,  -0.5790557,  -0.1708886,  -0.1828683,   0.0000000,  -0.1450338,  -0.1846675;
+         -0.8067323,  -0.5790557,   0.1708886,  -0.1828683,   0.0000000,  -0.1846675,  -0.1450338;
+           ];
+        assert_abs_diff_eq!(got, want, epsilon = 1e-7);
     }
 }

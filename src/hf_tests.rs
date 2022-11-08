@@ -9,9 +9,10 @@ use crate::molecule::*;
 
 #[test]
 fn test_enuc() {
-    let got = nuclear_repulsion("testfiles/h2o/STO-3G/enuc.dat");
+    let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
+    let got = nuclear_repulsion(&mol);
     let want = 8.002_367_061_810_45;
-    assert_eq!(got, want);
+    assert_abs_diff_eq!(got, want, epsilon = 1e-12);
 }
 
 #[test]

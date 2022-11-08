@@ -27,8 +27,8 @@ const PTABLE: [f64; 9] = [
 
 #[derive(Debug, Default, PartialEq)]
 pub struct Atom {
-    atomic_number: usize,
-    coord: Vec3,
+    pub(crate) atomic_number: usize,
+    pub(crate) coord: Vec3,
 }
 
 impl Atom {
@@ -39,7 +39,7 @@ impl Atom {
 
 #[derive(Debug, Default, PartialEq)]
 pub struct Molecule {
-    atoms: Vec<Atom>,
+    pub(crate) atoms: Vec<Atom>,
 }
 
 /// return the unit vector in the direction of v
@@ -271,6 +271,10 @@ impl Molecule {
             .iter()
             .map(|e| 1.0e-6 * C * MOI / (e * AMU * BOHR * BOHR))
             .collect()
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.atoms.len()
     }
 }
 

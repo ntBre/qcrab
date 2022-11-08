@@ -8,10 +8,17 @@ use nalgebra::SymmetricEigen;
 
 use crate::{eri::Eri, molecule::Molecule, Dmat, Mat3};
 
-// TODO eventually take a Molecule, not a filename
-pub fn nuclear_repulsion(filename: &str) -> f64 {
-    let data = read_to_string(filename).unwrap();
-    data.trim().parse().unwrap()
+/// compute the nuclear repulsion energy for `mol`
+pub fn nuclear_repulsion(mol: &Molecule) -> f64 {
+    let mut ret = 0.0;
+    let s = mol.len();
+    for (i, ai) in mol.atoms.iter().enumerate() {
+        for aj in mol.atoms.iter().skip(i + 1) {
+            let r = (ai.coord - aj.coord).norm();
+            ret += ai.atomic_number as f64 * aj.atomic_number as f64 / r;
+        }
+    }
+    ret
 }
 
 pub fn load_sym_matrix<P: AsRef<Path>>(filename: P) -> Dmat {

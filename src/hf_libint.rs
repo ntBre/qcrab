@@ -1,7 +1,7 @@
 use crate::{
     hf::nuclear_repulsion,
     molecule::{Atom, Molecule},
-    Vec3,
+    Dmat, Vec3,
 };
 
 struct Contraction {
@@ -232,8 +232,32 @@ fn make_sto3g_basis(mol: &Molecule) -> Vec<Shell> {
     shells
 }
 
+/// types of Operators supported by Engine
+enum Operator {
+    /// overlap
+    Overlap,
+
+    /// electronic kinetic energy, -1/2∇²
+    Kinetic,
+
+    /// Coulomb potential due to point charges
+    Nuclear,
+
+    /// 2-body Coulomb operator, 1/r₁₂
+    Coulomb,
+}
+
+fn compute_1body_ints(shells: &[Shell], overlap: Operator) -> Dmat {
+    todo!()
+}
+
 #[test]
 fn hf_libint() {
     let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
     let enuc = nuclear_repulsion(&mol);
+    let shells = make_sto3g_basis(&mol);
+
+    let s = compute_1body_ints(&shells, Operator::Overlap);
+    let t = compute_1body_ints(&shells, Operator::Kinetic);
+    let v = compute_1body_ints(&shells, Operator::Kinetic);
 }

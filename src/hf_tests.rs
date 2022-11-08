@@ -10,7 +10,7 @@ use crate::molecule::*;
 #[test]
 fn test_enuc() {
     let got = nuclear_repulsion("testfiles/h2o/STO-3G/enuc.dat");
-    let want = 8.002367061810450;
+    let want = 8.002_367_061_810_45;
     assert_eq!(got, want);
 }
 

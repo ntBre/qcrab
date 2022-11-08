@@ -74,7 +74,7 @@ fn load_bonds(filename: &str) -> na::DVector<Bond> {
     let mut ret = Vec::new();
     let data = read_to_string(filename).unwrap();
     for line in data.lines() {
-        let split: Vec<_> = line.trim().split_whitespace().collect();
+        let split: Vec<_> = line.split_whitespace().collect();
         ret.push(Bond::new(
             split[0].parse().unwrap(),
             split[1].parse().unwrap(),
@@ -114,7 +114,7 @@ fn load_angles(filename: &str) -> na::DVector<Angle> {
     let mut ret = Vec::new();
     let data = read_to_string(filename).unwrap();
     for line in data.lines() {
-        let split: Vec<_> = line.trim().split_whitespace().collect();
+        let split: Vec<_> = line.split_whitespace().collect();
         ret.push(Angle::new(
             split[0].parse().unwrap(),
             split[1].parse().unwrap(),
@@ -166,7 +166,7 @@ fn load_oop(filename: &str) -> na::DVector<Tors> {
     let mut ret = Vec::new();
     let data = read_to_string(filename).unwrap();
     for line in data.lines() {
-        let split: Vec<_> = line.trim().split_whitespace().collect();
+        let split: Vec<_> = line.split_whitespace().collect();
         ret.push(Tors::new(
             split[0].parse().unwrap(),
             split[1].parse().unwrap(),

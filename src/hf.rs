@@ -78,9 +78,9 @@ pub fn density(fock: &Dmat, s12: &Dmat, nelec: usize) -> Dmat {
     pairs.sort_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap());
     let (rows, cols) = f0.shape();
     let mut c0p = Dmat::zeros(rows, cols);
-    (0..cols).for_each(|i| {
-        c0p.set_column(i, &vecs.column(pairs[i].0));
-    });
+    for (c, _) in pairs {
+        c0p.set_column(c, &vecs.column(c));
+    }
     let c0 = s12 * c0p;
     let mut ret = Dmat::zeros(rows, cols);
     for mu in 0..rows {

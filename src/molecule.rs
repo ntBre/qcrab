@@ -103,7 +103,7 @@ impl Molecule {
         let ctom = self.atoms[k].coord;
         let eji = unit(atom - btom);
         let ejk = unit(ctom - btom);
-        return eji.dot(&ejk).acos();
+        eji.dot(&ejk).acos()
     }
 
     pub fn center_of_mass(&self) -> Vector3<f64> {
@@ -167,11 +167,7 @@ impl Molecule {
         let eki = unit(atom - ctom);
         let pjkl = self.angle(j, k, l).sin();
         let mut tmp = (ekj.cross(&ekl) / pjkl).dot(&eki);
-        if tmp < -1.0 {
-            tmp = -1.0;
-        } else if tmp > 1.0 {
-            tmp = 1.0;
-        }
+        tmp = tmp.clamp(-1.0, 1.0);
         Tors::new(i, j, k, l, tmp.asin().to_degrees())
     }
 
@@ -228,11 +224,7 @@ impl Molecule {
                         let cross2 = ejk.cross(&ekl);
                         let dot = cross1.dot(&cross2);
                         let mut div = dot / (p_ijk * p_jkl);
-                        if div < -1.0 {
-                            div = -1.0;
-                        } else if div > 1.0 {
-                            div = 1.0;
-                        }
+                        div = div.clamp(-1.0, 1.0);
                         ret.push(Tors::new(
                             i,
                             j,
@@ -296,7 +288,7 @@ impl approx::AbsDiffEq for Atom {
         if (self.coord - other.coord).norm() > epsilon {
             return false;
         }
-        return true;
+        true
     }
 }
 
@@ -310,6 +302,6 @@ impl approx::AbsDiffEq for Molecule {
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
         self.atoms.len() == other.atoms.len()
             && zip(&self.atoms, &other.atoms)
-                .all(|(a, b)| a.abs_diff_eq(&b, epsilon))
+                .all(|(a, b)| a.abs_diff_eq(b, epsilon))
     }
 }

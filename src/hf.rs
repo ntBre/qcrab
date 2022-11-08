@@ -75,13 +75,13 @@ pub fn density(fock: &Dmat, s12: &Dmat, nelec: usize) -> Dmat {
     let nocc = nelec / 2;
     // sort the eigenvalues and then the eigenvectors correspondingly
     let mut pairs: Vec<_> = vals.iter().enumerate().collect();
-    pairs.sort_by(|(_, a), (_, b)| a.partial_cmp(&b).unwrap());
+    pairs.sort_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap());
     let (rows, cols) = f0.shape();
     let mut c0p = Dmat::zeros(rows, cols);
-    for i in 0..cols {
+    (0..cols).for_each(|i| {
         c0p.set_column(i, &vecs.column(pairs[i].0));
-    }
-    let c0 = s12 * c0p.clone();
+    });
+    let c0 = s12 * c0p;
     let mut ret = Dmat::zeros(rows, cols);
     for mu in 0..rows {
         for nu in 0..cols {
@@ -142,20 +142,20 @@ pub fn do_scf(
     let mut e_old = 0.0;
     let mut r_old = 0.0;
     let mut f = hcore.clone();
-    let mut d = density(&f, &s12, nelec);
+    let mut d = density(&f, s12, nelec);
     let mut d_old = d.clone();
     let mut de = 2.0 * d1;
     let mut drmsd = 2.0 * d2;
     let mut iter = 0;
     while de.abs() > d1 || drmsd.abs() > d2 {
-        let e = energy(&d, &hcore, &f);
-        f = fock(&d, &hcore, &eri);
+        let e = energy(&d, hcore, &f);
+        f = fock(&d, hcore, eri);
         let r = rmsd(&d, &d_old);
         de = e - e_old;
         drmsd = r - r_old;
         println!("{:5}{:21.12}{:21.12}{:21.12}", iter, e, de, r);
         d_old = d;
-        d = density(&f, &s12, nelec);
+        d = density(&f, s12, nelec);
         e_old = e;
         r_old = r;
         iter += 1;

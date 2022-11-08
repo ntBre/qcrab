@@ -13,6 +13,8 @@ pub mod molecule;
 
 mod eri;
 
+mod hf_libint;
+
 type Vec3 = na::Vector3<f64>;
 type Mat3 = na::Matrix3<f64>;
 type Dvec = na::DVector<f64>;

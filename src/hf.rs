@@ -1,17 +1,15 @@
 use std::{
-    fs::read_to_string,
     io::{BufRead, BufReader},
     path::Path,
 };
 
 use nalgebra::SymmetricEigen;
 
-use crate::{eri::Eri, molecule::Molecule, Dmat, Mat3};
+use crate::{eri::Eri, molecule::Molecule, Dmat};
 
 /// compute the nuclear repulsion energy for `mol`
 pub fn nuclear_repulsion(mol: &Molecule) -> f64 {
     let mut ret = 0.0;
-    let s = mol.len();
     for (i, ai) in mol.atoms.iter().enumerate() {
         for aj in mol.atoms.iter().skip(i + 1) {
             let r = (ai.coord - aj.coord).norm();

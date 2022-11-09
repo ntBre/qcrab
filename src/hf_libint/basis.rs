@@ -1,6 +1,4 @@
-use super::{
-    contraction::Contraction, engine::Engine, shell::Shell, Operator,
-};
+use super::{contraction::Contraction, engine::Engine, shell::Shell, Operator};
 use crate::{
     molecule::{Atom, Molecule},
     Dmat,
@@ -124,7 +122,7 @@ impl Basis {
                 // previously returned by engine.result(), but I'll just return the
                 // result each time, at least for now. I can see why you wouldn't
                 // want to allocate a new vector on every call to compute, though
-                let buf = engine.compute(&self[s1], &self[s2]);
+                let buf = engine.compute1(&self[s1], &self[s2]);
 
                 // TODO put buf into the right part of result
             }

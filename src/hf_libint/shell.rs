@@ -36,11 +36,20 @@ impl Shell {
         }
     }
 
+    pub(crate) const fn ncontr(&self) -> usize {
+        self.contr.len()
+    }
+
+    pub(crate) fn cartesian_size(&self) -> usize {
+        self.contr.iter().map(|c| c.cartesian_size()).sum()
+    }
+
+    pub(crate) const fn nprim(&self) -> usize {
+        self.alpha.len()
+    }
+
     /// embeds normalization constants into contraction coefficients.
-    pub(crate) fn renorm(
-        alpha: &[f64],
-        contr: &mut [Contraction],
-    ) -> Vec<f64> {
+    pub(crate) fn renorm(alpha: &[f64], contr: &mut [Contraction]) -> Vec<f64> {
         pub(crate) const SQRT_PI_CUBED: f64 = 5.568_327_996_831_708;
         let np = alpha.len();
         for c in contr.iter_mut() {

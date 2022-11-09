@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use approx::{abs_diff_eq, assert_abs_diff_eq};
+use approx::assert_abs_diff_eq;
 use nalgebra::dmatrix;
 
 use crate::eri::Eri;

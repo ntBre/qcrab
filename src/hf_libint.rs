@@ -1,12 +1,8 @@
-use std::ops::Index;
-
 use crate::{
     hf::nuclear_repulsion,
     molecule::{Atom, Molecule},
     Vec3,
 };
-
-use self::{contraction::Contraction, engine::Engine, shell::Shell};
 
 mod basis;
 mod contraction;
@@ -65,8 +61,25 @@ pub(crate) enum Operator {
     Coulomb,
 }
 
-#[test]
-fn hf_libint() {
+impl Operator {
+    pub(crate) fn rank(&self) -> usize {
+        match self {
+            Operator::Overlap | Operator::Kinetic => 1,
+            Operator::Nuclear { q: _ } => 1,
+            Operator::Coulomb => 2,
+        }
+    }
+
+    /// Returns `true` if the operator is [`Nuclear`].
+    ///
+    /// [`Nuclear`]: Operator::Nuclear
+    #[must_use]
+    pub(crate) fn is_nuclear(&self) -> bool {
+        matches!(self, Self::Nuclear { .. })
+    }
+}
+
+fn libint() {
     let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
     let enuc = nuclear_repulsion(&mol);
     let shells = basis::Basis::sto3g(&mol);
@@ -86,4 +99,9 @@ fn hf_libint() {
     let s = shells.compute_1body_ints(Operator::Overlap);
     let t = shells.compute_1body_ints(Operator::Kinetic);
     let v = shells.compute_1body_ints(Operator::Nuclear { q });
+}
+
+#[test]
+fn hf_libint() {
+    libint()
 }

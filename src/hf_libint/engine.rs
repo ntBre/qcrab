@@ -79,6 +79,7 @@ impl Engine {
     /// libint lumps this and [compute2] together, but they have different
     /// arities, so I'll just keep them separate
     pub(crate) fn compute1(&self, s1: &Shell, s2: &Shell) -> Vec<f64> {
+        let mut ret = Vec::new();
         assert!(
             s1.ncontr() == 1 && s2.ncontr() == 1,
             "generally-contracted shells not yet supported"
@@ -124,31 +125,41 @@ impl Engine {
         // loop over accumulation batches. might not need this since I don't
         // really want to batch anything for now
         for pset in 0..self.nparams() {
-            let mut p12 = 0.0;
+            let mut p12 = 0;
             for p1 in 0..nprim1 {
                 for p2 in 0..nprim2 {
-                    primdata.push(self.compute_primdata(s1, s2, p1, p2, pset));
+                    let p = self.compute_primdata(s1, s2, p1, p2, pset);
+                    primdata.push(p);
+                    p12 += 1;
                 }
             }
-        }
+            let contrdepth = p12;
 
-        // TODO fix this after implementing primdata
-
-        if compute_directly {
-            let mut result = 0.0;
-            match &self.oper {
-                Operator::Overlap => {
-                    for p12 in 0..primdata.len() {
-                        todo!()
+            if compute_directly {
+                let mut result = 0.0;
+                match &self.oper {
+                    Operator::Overlap => {
+                        for p in &primdata {
+                            result += p.ovlp_ss_x * p.ovlp_ss_y * p.ovlp_ss_z;
+                        }
+                        ret.push(result);
                     }
+                    Operator::Nuclear { q } => todo!(),
+                    _ => {}
                 }
-                Operator::Nuclear { q } => todo!(),
-                _ => {}
+            } else {
+                // default braket for oper of rank 1 is x_x, for 2 is xx_xx
+                // let buildfnidx = s1.contr[0].l * hard_lmax + s2.contr[0].l;
+                // todo!()
+                ret.push(f64::NAN);
             }
-        } else {
-            todo!()
         }
-        todo!();
+
+        if tform_to_solids {
+            // todo!();
+        }
+        // todo!();
+        ret
     }
 
     pub(crate) fn compute_primdata(

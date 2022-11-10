@@ -1,5 +1,5 @@
 use crate::{
-    hf::nuclear_repulsion,
+    hf::{nuclear_repulsion, overlap_integrals},
     molecule::{Atom, Molecule},
     Vec3,
 };
@@ -109,9 +109,12 @@ fn libint() {
     let shells = basis::Basis::sto3g(&mol);
     let nao: usize = shells.0.iter().map(|s| s.size()).sum();
 
-    let s = shells.compute_1body_ints(Operator::Overlap);
-    let t = shells.compute_1body_ints(Operator::Kinetic);
-    let v = shells.compute_1body_ints(Operator::nuclear(&mol));
+    let s = overlap_integrals("testfiles/h2o/STO-3G/s.dat");
+    println!("loaded s={:.8}", s);
+    let s = shells.overlap_ints();
+    println!("computed s={:.8}", s);
+    // let t = shells.compute_1body_ints(Operator::Kinetic);
+    // let v = shells.compute_1body_ints(Operator::nuclear(&mol));
 }
 
 #[test]

@@ -36,7 +36,7 @@ impl Shell {
         }
     }
 
-    pub(crate) const fn ncontr(&self) -> usize {
+    pub(crate) fn ncontr(&self) -> usize {
         self.contr.len()
     }
 
@@ -44,7 +44,7 @@ impl Shell {
         self.contr.iter().map(|c| c.cartesian_size()).sum()
     }
 
-    pub(crate) const fn nprim(&self) -> usize {
+    pub(crate) fn nprim(&self) -> usize {
         self.alpha.len()
     }
 

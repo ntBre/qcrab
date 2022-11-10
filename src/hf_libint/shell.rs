@@ -12,9 +12,6 @@ pub(crate) struct Shell {
 
     /// origin of the shell
     pub(crate) origin: Vec3,
-
-    /// maximum ln of (absolute) contraction coefficient for each primitive
-    pub(crate) max_ln_coeff: Vec<f64>,
 }
 
 impl Shell {
@@ -22,14 +19,9 @@ impl Shell {
         alpha: Vec<f64>,
         mut contr: Vec<Contraction>,
         origin: Vec3,
-        embed_norm: bool,
     ) -> Self {
+        Self::renorm(&alpha, &mut contr);
         Self {
-            max_ln_coeff: if embed_norm {
-                Self::renorm(&alpha, &mut contr)
-            } else {
-                Self::update_max_ln_coeff(&alpha, &contr)
-            },
             alpha,
             contr,
             origin,
@@ -38,10 +30,6 @@ impl Shell {
 
     pub(crate) fn ncontr(&self) -> usize {
         self.contr.len()
-    }
-
-    pub(crate) fn cartesian_size(&self) -> usize {
-        self.contr.iter().map(|c| c.cartesian_size()).sum()
     }
 
     pub(crate) fn nprim(&self) -> usize {

@@ -5,8 +5,6 @@ use nalgebra::dmatrix;
 
 use crate::eri::Eri;
 use crate::hf::*;
-use crate::hf_libint::basis::Basis;
-use crate::hf_libint::Operator;
 use crate::molecule::*;
 
 #[test]
@@ -160,10 +158,8 @@ fn test_do_scf() {
     ];
     for test in tests {
         let dir = Path::new(test.dir);
-        let mol = Molecule::load(dir.join("geom.dat"));
-        let enuc = nuclear_repulsion(&mol);
-        let shells = Basis::sto3g(&mol);
-        let nao: usize = shells.0.iter().map(|s| s.size()).sum();
+        // let mol = Molecule::load(dir.join("geom.dat"));
+        // let shells = Basis::sto3g(&mol);
         // let s = shells.compute_1body_ints(Operator::Overlap);
         // let t = shells.compute_1body_ints(Operator::Kinetic);
         // let v = shells.compute_1body_ints(Operator::nuclear(&mol));

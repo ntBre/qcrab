@@ -272,10 +272,6 @@ impl Molecule {
             .map(|e| 1.0e-6 * C * MOI / (e * AMU * BOHR * BOHR))
             .collect()
     }
-
-    pub(crate) fn len(&self) -> usize {
-        self.atoms.len()
-    }
 }
 
 impl approx::AbsDiffEq for Atom {

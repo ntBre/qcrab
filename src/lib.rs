@@ -16,7 +16,6 @@ mod hf_libint;
 
 type Vec3 = na::Vector3<f64>;
 type Mat3 = na::Matrix3<f64>;
-type Dvec = na::DVector<f64>;
 type Dmat = na::DMatrix<f64>;
 
 #[derive(Clone, Debug, PartialEq)]

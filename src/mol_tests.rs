@@ -4,8 +4,10 @@ use approx::{assert_abs_diff_eq, AbsDiffEq};
 use na::{dvector, DVector};
 use nalgebra as na;
 
+type Dvec = na::DVector<f64>;
+
 use crate::molecule::Molecule;
-use crate::{Angle, Bond, Dvec, Tors};
+use crate::{Angle, Bond, Tors};
 
 impl AbsDiffEq for Bond {
     type Epsilon = f64;

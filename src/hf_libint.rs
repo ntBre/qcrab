@@ -4,7 +4,7 @@ use crate::{
     Vec3,
 };
 
-mod basis;
+pub(crate) mod basis;
 mod contraction;
 mod engine;
 mod shell;
@@ -70,12 +70,36 @@ impl Operator {
         }
     }
 
+    /// return an Operator::Nuclear with the charges generated from `mol`
+    pub(crate) fn nuclear(mol: &Molecule) -> Self {
+        Self::Nuclear {
+            q: mol
+                .atoms
+                .iter()
+                .map(
+                    |&Atom {
+                         atomic_number,
+                         coord,
+                     }| (atomic_number, coord),
+                )
+                .collect(),
+        }
+    }
+
     /// Returns `true` if the operator is [`Nuclear`].
     ///
     /// [`Nuclear`]: Operator::Nuclear
     #[must_use]
     pub(crate) fn is_nuclear(&self) -> bool {
         matches!(self, Self::Nuclear { .. })
+    }
+
+    /// Returns `true` if the operator is [`Kinetic`].
+    ///
+    /// [`Kinetic`]: Operator::Kinetic
+    #[must_use]
+    pub(crate) fn is_kinetic(&self) -> bool {
+        matches!(self, Self::Kinetic)
     }
 }
 
@@ -85,20 +109,9 @@ fn libint() {
     let shells = basis::Basis::sto3g(&mol);
     let nao: usize = shells.0.iter().map(|s| s.size()).sum();
 
-    let q = mol
-        .atoms
-        .iter()
-        .map(
-            |&Atom {
-                 atomic_number,
-                 coord,
-             }| (atomic_number, coord),
-        )
-        .collect();
-
     let s = shells.compute_1body_ints(Operator::Overlap);
     let t = shells.compute_1body_ints(Operator::Kinetic);
-    let v = shells.compute_1body_ints(Operator::Nuclear { q });
+    let v = shells.compute_1body_ints(Operator::nuclear(&mol));
 }
 
 #[test]

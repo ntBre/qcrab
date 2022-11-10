@@ -42,6 +42,9 @@ pub(crate) struct Engine {
 
     /// not documented in libint
     screening_method: ScreeningMethod,
+
+    /// scale the target integrals by this factor. defaults to 1.0
+    scale: f64,
 }
 
 impl Engine {
@@ -60,11 +63,12 @@ impl Engine {
             params: Params,
             braket: BraKet,
             screening_method: ScreeningMethod,
+            scale: 1.0,
         }
     }
 
     fn nparams(&self) -> usize {
-        match self.oper {
+        match &self.oper {
             Operator::Overlap => 1,
             Operator::Kinetic => 1,
             Operator::Nuclear { q } => q.len(),
@@ -130,16 +134,21 @@ impl Engine {
 
         // TODO fix this after implementing primdata
 
-        // if compute_directly {
-        //     let mut result = primdata[0];
-        //     match self.oper {
-        //         Operator::Overlap => for p12 in 0..contrdepth {},
-        //         Operator::Kinetic => todo!(),
-        //         Operator::Nuclear { q } => todo!(),
-        //         Operator::Coulomb => todo!(),
-        //     }
-        // }
-        todo!()
+        if compute_directly {
+            let mut result = 0.0;
+            match &self.oper {
+                Operator::Overlap => {
+                    for p12 in 0..primdata.len() {
+                        todo!()
+                    }
+                }
+                Operator::Nuclear { q } => todo!(),
+                _ => {}
+            }
+        } else {
+            todo!()
+        }
+        todo!();
     }
 
     pub(crate) fn compute_primdata(
@@ -149,7 +158,109 @@ impl Engine {
         p1: usize,
         p2: usize,
         pset: usize,
-    ) -> _ {
-        todo!()
+    ) -> Primdata {
+        // return a libint_t which depends on something to be defined
+        let a = s1.origin;
+        let b = s2.origin;
+        let alpha1 = s1.alpha[p1];
+        let alpha2 = s2.alpha[p2];
+        let c1 = s1.contr[0].coeff[p1];
+        let c2 = s2.contr[0].coeff[p2];
+        let gammap = alpha1 + alpha2;
+        let oogammap = 1.0 / gammap;
+        let rhop_over_alpha1 = alpha2 * oogammap;
+        let rhop = alpha1 * rhop_over_alpha1;
+        let px = (alpha1 * a[0] + alpha2 * b[0]) * oogammap;
+        let py = (alpha1 * a[1] + alpha2 * b[1]) * oogammap;
+        let pz = (alpha1 * a[2] + alpha2 * b[2]) * oogammap;
+        let ab_x = a[0] - b[0];
+        let ab_y = a[1] - b[1];
+        let ab_z = a[2] - b[2];
+        let ab2_x = ab_x * ab_x;
+        let ab2_y = ab_y * ab_y;
+        let ab2_z = ab_z * ab_z;
+
+        let is_nuc = self.oper.is_nuclear();
+
+        let l1 = s1.contr[0].l;
+        let l2 = s2.contr[0].l;
+
+        // NOTE this is a nother operator variant that we don't have yet
+        let is_sphemultipole = false;
+        let use_hrr = (is_nuc || is_sphemultipole) && l1 > 0 && l2 > 0;
+        let hrr_ket_to_bra = l1 >= l2;
+
+        let mut ret = Primdata::default();
+
+        if use_hrr {
+            if hrr_ket_to_bra {
+                ret.ab_x = ab_x;
+                ret.ab_y = ab_y;
+                ret.ab_z = ab_z;
+            } else {
+                ret.ba_x = -ab_x;
+                ret.ba_y = -ab_y;
+                ret.ba_z = -ab_z;
+            }
+        }
+
+        ret.pa_x = px - a[0];
+        ret.pa_y = py - a[1];
+        ret.pa_z = pz - a[2];
+
+        ret.pb_x = px - b[0];
+        ret.pb_y = py - b[1];
+        ret.pb_z = pz - b[2];
+
+        // if oper == emultipole[123] ...
+
+        // if oper == sphemultipole ...
+
+        ret.oo2z = oogammap;
+        const SQRT_PI: f64 = 1.772_453_850_905_516;
+        let xyz_pfac: f64 = SQRT_PI * f64::sqrt(oogammap);
+        ret.ovlp_ss_x =
+            f64::exp(-rhop * ab2_x) * xyz_pfac * c1 * c2 * self.scale;
+        ret.ovlp_ss_y = f64::exp(-rhop * ab2_y) * xyz_pfac;
+        ret.ovlp_ss_z = f64::exp(-rhop * ab2_z) * xyz_pfac;
+
+        if self.oper.is_kinetic() || self.deriv_order > 0 {
+            ret.two_alpha0_bra = 2.0 * alpha1;
+            ret.two_alpha0_ket = 2.0 * alpha2;
+        }
+
+        if self.oper.is_nuclear() {
+            todo!("engine.impl.h:1025")
+        }
+        ret
     }
+}
+
+// I think some of these are enums/mutually exclusive, but I'm not sure yet
+#[derive(Default)]
+pub(crate) struct Primdata {
+    ab_x: f64,
+    ab_y: f64,
+    ab_z: f64,
+    //
+    ba_x: f64,
+    ba_y: f64,
+    ba_z: f64,
+    //
+    pa_x: f64,
+    pa_y: f64,
+    pa_z: f64,
+    //
+    pb_x: f64,
+    pb_y: f64,
+    pb_z: f64,
+    //
+    oo2z: f64,
+    //
+    ovlp_ss_x: f64,
+    ovlp_ss_y: f64,
+    ovlp_ss_z: f64,
+    //
+    two_alpha0_bra: f64,
+    two_alpha0_ket: f64,
 }

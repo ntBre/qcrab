@@ -52,6 +52,7 @@ impl Basis {
         } in &mol.atoms
         {
             match atomic_number {
+                // hydrogen
                 1 => shells.push(Shell::new(
                     vec![3.425250910, 0.623913730, 0.168855400],
                     vec![Contraction::new(
@@ -62,9 +63,41 @@ impl Basis {
                     *coord,
                     true,
                 )),
+                // carbon
+                6 => shells.extend([
+                    Shell::new(
+                        vec![71.616837000, 13.045096000, 3.530512200],
+                        vec![Contraction::new(
+                            0,
+                            false,
+                            vec![0.15432897, 0.53532814, 0.44463454],
+                        )],
+                        *coord,
+                        true,
+                    ),
+                    Shell::new(
+                        vec![2.941249400, 0.683483100, 0.222289900],
+                        vec![Contraction::new(
+                            0,
+                            false,
+                            vec![-0.09996723, 0.39951283, 0.70011547],
+                        )],
+                        *coord,
+                        true,
+                    ),
+                    Shell::new(
+                        vec![2.941249400, 0.683483100, 0.222289900],
+                        vec![Contraction::new(
+                            1,
+                            false,
+                            vec![0.15591627, 0.60768372, 0.39195739],
+                        )],
+                        *coord,
+                        true,
+                    ),
+                ]),
                 // oxygen
                 8 => shells.extend([
-                    //
                     Shell::new(
                         vec![130.709320000, 23.808861000, 6.443608300],
                         vec![Contraction::new(
@@ -103,35 +136,12 @@ impl Basis {
         Self(shells)
     }
 
-    pub(crate) fn compute_1body_ints(&self, obtype: Operator) -> Dmat {
-        let n = self.nbasis();
-        let result = Dmat::zeros(n, n);
-        let engine = Engine::new(obtype, self.max_nprim(), self.max_l(), 0);
-
-        let shell2bf = self.map_shell_to_basis_function();
-
-        for s1 in 0..self.len() {
-            let bf1 = shell2bf[s1];
-            let n1 = self[s1].size();
-
-            for s2 in 0..=s1 {
-                let bf2 = shell2bf[s2];
-                let n2 = self[s2].size();
-
-                // they do some weird buffer stuff where we look inside the buffer
-                // previously returned by engine.result(), but I'll just return the
-                // result each time, at least for now. I can see why you wouldn't
-                // want to allocate a new vector on every call to compute, though
-                let buf = engine.compute1(&self[s1], &self[s2]);
-
-                // TODO put buf into the right part of result
-            }
-        }
-        todo!()
-    }
-
     pub(crate) fn len(&self) -> usize {
         self.0.len()
+    }
+
+    pub(crate) fn overlap_integrals(&self) -> Dmat {
+        todo!()
     }
 }
 

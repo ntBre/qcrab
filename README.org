@@ -3,3 +3,14 @@
 =qcrab= is a quantum chemistry program written in Rust. The basics are
 taken from the [[https://github.com/CrawfordGroup/ProgrammingProjects][Crawford Programming Projects]], but I hope to extend
 this to a fully-featured chemistry package.
+
+* References
+  - M. Ho and J. M. Hernandez-Perez. "Evaluation of Gaussian Molecular
+    Integrals I. Overlap Integrals," /The Mathematica Journal/, 14, 2012.
+  - P. M. W. Gill. "Molecular Integrals over Gaussian Basis Functions," /Academic
+    Press/, 1994.
+  - J. Goings. "A (Hopefully) Gentle Guide to the Computer Implementation of
+    Molecular Integrals."
+  - J. T. Fermann and E. F. Valeev. "Fundamentals of Molecular Integrals
+    Evaluation."
+  - [[https://github.com/evaleev/libint][libint]] source code

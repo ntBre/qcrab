@@ -2,8 +2,6 @@ use crate::{
     hf::{nuclear_repulsion, overlap_integrals},
     molecule::Molecule,
 };
-use approx::assert_abs_diff_eq;
-
 pub(crate) mod basis;
 mod contraction;
 mod shell;
@@ -60,7 +58,7 @@ fn libint() {
 
     let want = overlap_integrals("testfiles/h2o/STO-3G/s.dat");
     let got = shells.overlap_ints();
-    assert_abs_diff_eq!(got, want, epsilon = 1e-13);
+    approx::assert_abs_diff_eq!(got, want, epsilon = 1e-13);
     // let t = shells.compute_1body_ints(Operator::Kinetic);
     // let v = shells.compute_1body_ints(Operator::nuclear(&mol));
 }
@@ -76,5 +74,9 @@ fn overlap() {
     let shells = basis::Basis::sto3g(&mol);
     let want = overlap_integrals("testfiles/h2o/STO-3G/s.dat");
     let got = shells.overlap_ints();
-    assert_abs_diff_eq!(got, want, epsilon = 1e-13);
+    if approx::abs_diff_ne!(got, want, epsilon = 1e-13) {
+        println!("got={:.8}", got);
+        println!("want={:.8}", want);
+        panic!("differ by {:.2e}", (got - want).abs().max());
+    }
 }

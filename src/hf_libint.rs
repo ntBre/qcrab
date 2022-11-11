@@ -1,12 +1,8 @@
-use nalgebra::dmatrix;
-
 use crate::{
     hf::{nuclear_repulsion, overlap_integrals},
     molecule::Molecule,
-    Dmat,
 };
-
-use std::f64::NAN;
+use approx::assert_abs_diff_eq;
 
 pub(crate) mod basis;
 mod contraction;
@@ -55,25 +51,6 @@ fn dfact(n: isize) -> f64 {
     }
 }
 
-fn nan_cmp(a: &Dmat, b: &Dmat, eps: f64) -> bool {
-    let (ar, ac) = a.shape();
-    let (br, bc) = b.shape();
-    if ar != br || ac != bc {
-        return false;
-    }
-    for i in 0..ar {
-        for j in 0..ac {
-            // if they're not equal and not both NaN
-            if (a[(i, j)] - b[(i, j)]).abs() > eps {
-                if !(a[(i, j)].is_nan() && b[(i, j)].is_nan()) {
-                    return false;
-                }
-            }
-        }
-    }
-    true
-}
-
 #[allow(unused)]
 fn libint() {
     let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
@@ -81,20 +58,9 @@ fn libint() {
     let shells = basis::Basis::sto3g(&mol);
     let _nao: usize = shells.0.iter().map(|s| s.size()).sum();
 
-    let s = overlap_integrals("testfiles/h2o/STO-3G/s.dat");
-    println!("loaded s={:.8}", s);
-    let s = shells.overlap_ints();
-    let want_s = dmatrix![
-    1.00000000, 0.23670394,        NAN,        NAN,        NAN, 0.03840560, 0.03840560;
-    0.23670394, 1.00000000,        NAN,        NAN,        NAN, 0.38613884, 0.38613884;
-           NAN,        NAN,        NAN,        NAN,        NAN,        NAN,        NAN;
-           NAN,        NAN,        NAN,        NAN,        NAN,        NAN,        NAN;
-           NAN,        NAN,        NAN,        NAN,        NAN,        NAN,        NAN;
-    0.03840560, 0.38613884,        NAN,        NAN,        NAN, 1.00000000, 0.18175989;
-    0.03840560, 0.38613884,        NAN,        NAN,        NAN, 0.18175989, 1.00000000;
-     ];
-    println!("computed s={:.8}", s);
-    assert!(nan_cmp(&s, &want_s, 1e-8));
+    let want = overlap_integrals("testfiles/h2o/STO-3G/s.dat");
+    let got = shells.overlap_ints();
+    assert_abs_diff_eq!(got, want, epsilon = 1e-13);
     // let t = shells.compute_1body_ints(Operator::Kinetic);
     // let v = shells.compute_1body_ints(Operator::nuclear(&mol));
 }
@@ -102,4 +68,13 @@ fn libint() {
 #[test]
 fn hf_libint() {
     libint()
+}
+
+#[test]
+fn overlap() {
+    let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
+    let shells = basis::Basis::sto3g(&mol);
+    let want = overlap_integrals("testfiles/h2o/STO-3G/s.dat");
+    let got = shells.overlap_ints();
+    assert_abs_diff_eq!(got, want, epsilon = 1e-13);
 }

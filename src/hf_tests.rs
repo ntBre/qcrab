@@ -5,6 +5,7 @@ use nalgebra::dmatrix;
 
 use crate::eri::Eri;
 use crate::hf::*;
+use crate::hf_libint::basis::Basis;
 use crate::molecule::*;
 
 #[test]
@@ -137,40 +138,48 @@ fn test_do_scf() {
     struct Test {
         dir: &'static str,
         want: f64,
+        eps: f64,
     }
     let tests = [
         Test {
             dir: "testfiles/h2o/STO-3G",
             want: -82.944446990003,
+            eps: 1e-12,
         },
         Test {
             dir: "testfiles/h2o/DZ",
             want: -83.980246037187,
+            eps: 1e-12,
         },
         Test {
             dir: "testfiles/h2o/DZP",
             want: -84.011188854711,
+            eps: 1e-12,
         },
         Test {
             dir: "testfiles/ch4/STO-3G",
             want: -53.224154786383,
+            eps: 1e-7,
         },
     ];
     for test in tests {
         let dir = Path::new(test.dir);
-        // let mol = Molecule::load(dir.join("geom.dat"));
-        // let shells = Basis::sto3g(&mol);
-        // let s = shells.compute_1body_ints(Operator::Overlap);
+        let s = if test.dir.contains("STO-3G") {
+            let mol = Molecule::load(dir.join("geom.dat"));
+            let shells = Basis::sto3g(&mol);
+            shells.overlap_ints()
+        } else {
+            overlap_integrals(dir.join("s.dat"))
+        };
         // let t = shells.compute_1body_ints(Operator::Kinetic);
         // let v = shells.compute_1body_ints(Operator::nuclear(&mol));
         let t = kinetic_integrals(dir.join("t.dat"));
         let v = attraction_integrals(dir.join("v.dat"));
-        let s = overlap_integrals(dir.join("s.dat"));
         let hcore = t + v;
         let s12 = build_orthog_matrix(s);
         let mol = Molecule::load(dir.join("geom.dat"));
         let eri = Eri::new(dir.join("eri.dat"));
         let got = do_scf(&hcore, &s12, &eri, mol.nelec(), 1e-12, 7e-12);
-        assert_abs_diff_eq!(got, test.want, epsilon = 1e-12);
+        assert_abs_diff_eq!(got, test.want, epsilon = test.eps);
     }
 }

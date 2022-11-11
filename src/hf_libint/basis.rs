@@ -231,12 +231,14 @@ fn s_xyz(
     let mut acc = 0.0;
     for ix in 0..=ax {
         for jx in 0..=bx {
-            acc += binom(ax, ix)
-                * binom(bx, jx)
-                * dfact(ix + jx - 1)
-                * pa.powi((ax - ix) as i32)
-                * pb.powi((bx - jx) as i32)
-                / ((2.0 * (alpha + beta)).powi(((ix + jx) / 2) as i32));
+            if (ix + jx) % 2 != 1 {
+                acc += binom(ax, ix)
+                    * binom(bx, jx)
+                    * dfact(ix + jx - 1)
+                    * pa.powi((ax - ix) as i32)
+                    * pb.powi((bx - jx) as i32)
+                    / ((2.0 * (alpha + beta)).powi(((ix + jx) / 2) as i32));
+            }
         }
     }
     acc

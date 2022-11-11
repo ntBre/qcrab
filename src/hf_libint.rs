@@ -93,8 +93,8 @@ fn libint() {
     0.03840560, 0.38613884,        NAN,        NAN,        NAN, 1.00000000, 0.18175989;
     0.03840560, 0.38613884,        NAN,        NAN,        NAN, 0.18175989, 1.00000000;
      ];
-    assert!(nan_cmp(&s, &want_s, 1e-8));
     println!("computed s={:.8}", s);
+    assert!(nan_cmp(&s, &want_s, 1e-8));
     // let t = shells.compute_1body_ints(Operator::Kinetic);
     // let v = shells.compute_1body_ints(Operator::nuclear(&mol));
 }

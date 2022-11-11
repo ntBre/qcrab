@@ -1,8 +1,10 @@
 use super::{contraction::Contraction, shell::Shell};
 use crate::{
+    hf_libint::dfact,
     molecule::{Atom, Molecule},
     Dmat,
 };
+use itertools::Itertools;
 use std::{f64::consts::PI, ops::Index};
 
 pub(crate) struct Basis(pub(crate) Vec<Shell>);
@@ -140,17 +142,21 @@ impl Basis {
 
                     let l1 = s1.contr[0].l;
                     let l2 = s2.contr[0].l;
-                    let mut result = 0.0;
-                    for (p1, alpha1) in s1.alpha.iter().enumerate() {
-                        for (p2, alpha2) in s2.alpha.iter().enumerate() {
+                    let mut results = vec![0.0; n1 * n2];
+                    // somewhere in here I have to loop over the actual
+                    // orbitals, not just the shells. that's where the missing
+                    // entries are coming from - 3*1 for pxs overlap and 3*3 for
+                    // the pxp overlap
+                    for (p1, alpha) in s1.alpha.iter().enumerate() {
+                        for (p2, beta) in s2.alpha.iter().enumerate() {
                             let a = s1.origin;
                             let b = s2.origin;
                             let c1 = s1.contr[0].coeff[p1];
                             let c2 = s2.contr[0].coeff[p2];
-                            let gammap = alpha1 + alpha2;
+                            let gammap = alpha + beta;
                             let oogammap = 1.0 / gammap;
-                            let rhop_over_alpha1 = alpha2 * oogammap;
-                            let rhop = alpha1 * rhop_over_alpha1;
+                            let rhop_over_alpha1 = beta * oogammap;
+                            let rhop = alpha * rhop_over_alpha1;
                             let ab_x = a[0] - b[0];
                             let ab_y = a[1] - b[1];
                             let ab_z = a[2] - b[2];
@@ -158,45 +164,47 @@ impl Basis {
                             let ab2_y = ab_y * ab_y;
                             let ab2_z = ab_z * ab_z;
 
-                            let xyz_pfac: f64 = 1.0;
-                            let ovlp_ss_x =
-                                f64::exp(-rhop * ab2_x) * xyz_pfac * c1 * c2;
-                            let ovlp_ss_y = f64::exp(-rhop * ab2_y) * xyz_pfac;
-                            let ovlp_ss_z = f64::exp(-rhop * ab2_z) * xyz_pfac;
+                            let ovlp_ss_x = f64::exp(-rhop * ab2_x) * c1 * c2;
+                            let ovlp_ss_y = f64::exp(-rhop * ab2_y);
+                            let ovlp_ss_z = f64::exp(-rhop * ab2_z);
 
-                            let p = (*alpha1 * a + *alpha2 * b) / gammap;
+                            let p = (*alpha * a + *beta * b) / gammap;
                             let pa = p - a;
                             let pb = p - b;
 
-                            let ix = i_helper(l1, l2, pa.x, pb.x, gammap);
-                            let iy = i_helper(l1, l2, pa.y, pb.y, gammap);
-                            let iz = i_helper(l1, l2, pa.z, pb.z, gammap);
+                            let ls1 = match l1 {
+                                0 => vec![(0, 0, 0)],
+                                1 => vec![(1, 0, 0), (0, 1, 0), (0, 0, 1)],
+                                _ => panic!("unmatched l value {l1}"),
+                            };
+                            let ls2 = match l2 {
+                                0 => vec![(0, 0, 0)],
+                                1 => vec![(1, 0, 0), (0, 1, 0), (0, 0, 1)],
+                                _ => panic!("unmatched l value {l1}"),
+                            };
 
-                            if l1 != 0 || l2 != 0 {
-                                // println!("result_{p1}{p2}={:.8}", result);
+                            let pfac = (PI / (alpha + beta)).sqrt();
+                            let combos = ls1.iter().cartesian_product(ls2);
+                            for (i, ((l1x, l1y, l1z), (l2x, l2y, l2z))) in
+                                combos.enumerate()
+                            {
+                                let ix = pfac
+                                    * s_xyz(*l1x, l2x, pa.x, pb.x, alpha, beta);
+                                let iy = pfac
+                                    * s_xyz(*l1y, l2y, pa.y, pb.y, alpha, beta);
+                                let iz = pfac
+                                    * s_xyz(*l1z, l2z, pa.z, pb.z, alpha, beta);
+                                results[i] += ovlp_ss_x
+                                    * ovlp_ss_y
+                                    * ovlp_ss_z
+                                    * ix
+                                    * iy
+                                    * iz;
                             }
-                            result += ovlp_ss_x
-                                * ovlp_ss_y
-                                * ovlp_ss_z
-                                * ix
-                                * iy
-                                * iz;
                         }
                     }
-                    if l1 != 0 || l2 != 0 {
-                        // println!("result={:.8}", result);
-                        vec![f64::NAN; n1 * n2]
-                    } else {
-                        vec![result]
-                    }
+                    results
                 };
-                // println!(
-                //     "setting {},{} to {},{}",
-                //     bf1,
-                //     bf2,
-                //     bf1 + n1 - 1,
-                //     bf2 + n2 - 1
-                // );
                 let mut ij = 0;
                 for i in bf1..bf1 + n1 {
                     for j in bf2..bf2 + n2 {
@@ -211,46 +219,42 @@ impl Basis {
     }
 }
 
-fn i_helper(l1: usize, l2: usize, pax: f64, pbx: f64, gammap: f64) -> f64 {
-    fn f(k: usize, l1: usize, l2: usize, pax: f64, pbx: f64) -> f64 {
-        fn binom(n: isize, k: isize) -> f64 {
-            fn fact(mut i: isize) -> isize {
-                let mut prod = 1;
-                while i > 1 {
-                    prod *= i;
-                    i -= 1;
-                }
-                prod
-            }
-            (fact(n) / (fact(k) * fact(n - k))) as f64
+/// compute individual S_[xyz] values
+fn s_xyz(
+    ax: isize,
+    bx: isize,
+    pa: f64,
+    pb: f64,
+    alpha: &f64,
+    beta: &f64,
+) -> f64 {
+    let mut acc = 0.0;
+    for ix in 0..=ax {
+        for jx in 0..=bx {
+            acc += binom(ax, ix)
+                * binom(bx, jx)
+                * dfact(ix + jx - 1)
+                * pa.powi((ax - ix) as i32)
+                * pb.powi((bx - jx) as i32)
+                / ((2.0 * (alpha + beta)).powi(((ix + jx) / 2) as i32));
         }
-        let k = k as isize;
-        let l1 = l1 as isize;
-        let l2 = l2 as isize;
-        let mut res = 0.0;
-        for i in 0..=l1 {
-            for j in 0..=l2 {
-                if i + j <= k {
-                    res += pax.powi((l1 - i) as i32)
-                        * binom(l1, i)
-                        * pbx.powi((l2 - j) as i32)
-                        * binom(l2, j);
-                }
-            }
-        }
-        res
     }
-    let mut ret = 0.0;
-    for i in 0..=l1 + l2 {
-        let v = if i < 1 {
-            1.0
-        } else {
-            super::DF_KMINUS1[2 * i - 1] as f64
-        };
-        ret += f(2 * i, l1, l2, pax, pbx) * v / (2.0 * gammap).powi(i as i32)
-            * (PI / gammap).sqrt();
+    acc
+}
+
+/// return the factorial of i
+fn factorial(mut i: isize) -> isize {
+    let mut prod = 1;
+    while i > 1 {
+        prod *= i;
+        i -= 1;
     }
-    ret
+    prod
+}
+
+/// return the binomial coefficient n choose k
+fn binom(n: isize, k: isize) -> f64 {
+    (factorial(n) / (factorial(k) * factorial(n - k))) as f64
 }
 
 impl Index<usize> for Basis {

@@ -3,7 +3,7 @@ use crate::{
     molecule::{Atom, Molecule},
     Dmat,
 };
-use std::ops::Index;
+use std::{f64::consts::PI, ops::Index};
 
 pub(crate) struct Basis(pub(crate) Vec<Shell>);
 
@@ -138,52 +138,55 @@ impl Basis {
                         "generally-contracted shells not yet supported"
                     );
 
-                    let nprim1 = s1.nprim();
-                    let nprim2 = s2.nprim();
-
                     let l1 = s1.contr[0].l;
                     let l2 = s2.contr[0].l;
+                    let mut result = 0.0;
+                    for (p1, alpha1) in s1.alpha.iter().enumerate() {
+                        for (p2, alpha2) in s2.alpha.iter().enumerate() {
+                            let a = s1.origin;
+                            let b = s2.origin;
+                            let c1 = s1.contr[0].coeff[p1];
+                            let c2 = s2.contr[0].coeff[p2];
+                            let gammap = alpha1 + alpha2;
+                            let oogammap = 1.0 / gammap;
+                            let rhop_over_alpha1 = alpha2 * oogammap;
+                            let rhop = alpha1 * rhop_over_alpha1;
+                            let ab_x = a[0] - b[0];
+                            let ab_y = a[1] - b[1];
+                            let ab_z = a[2] - b[2];
+                            let ab2_x = ab_x * ab_x;
+                            let ab2_y = ab_y * ab_y;
+                            let ab2_z = ab_z * ab_z;
+
+                            let xyz_pfac: f64 = 1.0;
+                            let ovlp_ss_x =
+                                f64::exp(-rhop * ab2_x) * xyz_pfac * c1 * c2;
+                            let ovlp_ss_y = f64::exp(-rhop * ab2_y) * xyz_pfac;
+                            let ovlp_ss_z = f64::exp(-rhop * ab2_z) * xyz_pfac;
+
+                            let p = (*alpha1 * a + *alpha2 * b) / gammap;
+                            let pa = p - a;
+                            let pb = p - b;
+
+                            let ix = i_helper(l1, l2, pa.x, pb.x, gammap);
+                            let iy = i_helper(l1, l2, pa.y, pb.y, gammap);
+                            let iz = i_helper(l1, l2, pa.z, pb.z, gammap);
+
+                            if l1 != 0 || l2 != 0 {
+                                // println!("result_{p1}{p2}={:.8}", result);
+                            }
+                            result += ovlp_ss_x
+                                * ovlp_ss_y
+                                * ovlp_ss_z
+                                * ix
+                                * iy
+                                * iz;
+                        }
+                    }
                     if l1 != 0 || l2 != 0 {
+                        // println!("result={:.8}", result);
                         vec![f64::NAN; n1 * n2]
                     } else {
-                        let mut result = 0.0;
-                        for p1 in 0..nprim1 {
-                            for p2 in 0..nprim2 {
-                                // return a libint_t which depends on something
-                                // to be defined
-                                let a = s1.origin;
-                                let b = s2.origin;
-                                let alpha1 = s1.alpha[p1];
-                                let alpha2 = s2.alpha[p2];
-                                let c1 = s1.contr[0].coeff[p1];
-                                let c2 = s2.contr[0].coeff[p2];
-                                let gammap = alpha1 + alpha2;
-                                let oogammap = 1.0 / gammap;
-                                let rhop_over_alpha1 = alpha2 * oogammap;
-                                let rhop = alpha1 * rhop_over_alpha1;
-                                let ab_x = a[0] - b[0];
-                                let ab_y = a[1] - b[1];
-                                let ab_z = a[2] - b[2];
-                                let ab2_x = ab_x * ab_x;
-                                let ab2_y = ab_y * ab_y;
-                                let ab2_z = ab_z * ab_z;
-
-                                const SQRT_PI: f64 = 1.772_453_850_905_516;
-                                let xyz_pfac: f64 =
-                                    SQRT_PI * f64::sqrt(oogammap);
-                                let ovlp_ss_x = f64::exp(-rhop * ab2_x)
-                                    * xyz_pfac
-                                    * c1
-                                    * c2;
-                                let ovlp_ss_y =
-                                    f64::exp(-rhop * ab2_y) * xyz_pfac;
-                                let ovlp_ss_z =
-                                    f64::exp(-rhop * ab2_z) * xyz_pfac;
-
-                                result += ovlp_ss_x * ovlp_ss_y * ovlp_ss_z
-                            }
-                        }
-
                         vec![result]
                     }
                 };
@@ -206,6 +209,48 @@ impl Basis {
         }
         result
     }
+}
+
+fn i_helper(l1: usize, l2: usize, pax: f64, pbx: f64, gammap: f64) -> f64 {
+    fn f(k: usize, l1: usize, l2: usize, pax: f64, pbx: f64) -> f64 {
+        fn binom(n: isize, k: isize) -> f64 {
+            fn fact(mut i: isize) -> isize {
+                let mut prod = 1;
+                while i > 1 {
+                    prod *= i;
+                    i -= 1;
+                }
+                prod
+            }
+            (fact(n) / (fact(k) * fact(n - k))) as f64
+        }
+        let k = k as isize;
+        let l1 = l1 as isize;
+        let l2 = l2 as isize;
+        let mut res = 0.0;
+        for i in 0..=l1 {
+            for j in 0..=l2 {
+                if i + j <= k {
+                    res += pax.powi((l1 - i) as i32)
+                        * binom(l1, i)
+                        * pbx.powi((l2 - j) as i32)
+                        * binom(l2, j);
+                }
+            }
+        }
+        res
+    }
+    let mut ret = 0.0;
+    for i in 0..=l1 + l2 {
+        let v = if i < 1 {
+            1.0
+        } else {
+            super::DF_KMINUS1[2 * i - 1] as f64
+        };
+        ret += f(2 * i, l1, l2, pax, pbx) * v / (2.0 * gammap).powi(i as i32)
+            * (PI / gammap).sqrt();
+    }
+    ret
 }
 
 impl Index<usize> for Basis {

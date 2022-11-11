@@ -32,6 +32,7 @@ impl Shell {
         self.contr.len()
     }
 
+    #[allow(unused)]
     pub(crate) fn nprim(&self) -> usize {
         self.alpha.len()
     }

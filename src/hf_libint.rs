@@ -47,6 +47,14 @@ const DF_KMINUS1: [i64; 31] = [
     6190283353629375,
 ];
 
+fn dfact(n: isize) -> f64 {
+    if n == -1 {
+        1.0
+    } else {
+        DF_KMINUS1[n as usize] as f64
+    }
+}
+
 fn nan_cmp(a: &Dmat, b: &Dmat, eps: f64) -> bool {
     let (ar, ac) = a.shape();
     let (br, bc) = b.shape();

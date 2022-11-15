@@ -5,11 +5,147 @@ use crate::{
     Dmat,
 };
 use itertools::Itertools;
-use std::{f64::consts::PI, ops::Index};
+use std::{f64::consts::PI, fs::read_to_string, ops::Index, path::Path};
 
+#[derive(PartialEq, Debug)]
 pub(crate) struct Basis(pub(crate) Vec<Shell>);
 
+mod json {
+    use std::collections::HashMap;
+
+    use serde::Deserialize;
+
+    #[derive(Debug, Deserialize)]
+    pub(crate) struct JsonBasis {
+        pub(crate) elements: HashMap<usize, Shells>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    pub(crate) struct Shells {
+        pub(crate) electron_shells: Vec<RawShell>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    pub(crate) struct RawShell {
+        pub(crate) angular_momentum: Vec<usize>,
+        pub(crate) exponents: Vec<String>,
+        pub(crate) coefficients: Vec<Vec<String>>,
+    }
+}
+
+#[test]
+fn load() {
+    use nalgebra::vector;
+
+    let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
+    let got = Basis::load("basis_sets/sto-3g.json", &mol);
+    let want = Basis(vec![
+        Shell {
+            alpha: vec![130.7093214, 23.80886605, 6.443608313],
+            contr: vec![Contraction {
+                l: 0,
+                pure: false,
+                coeff: vec![
+                    4.251943277787213,
+                    4.11229442420408,
+                    1.2816225514343584,
+                ],
+            }],
+            origin: vector![0.0, -0.143225816552, 0.0],
+        },
+        Shell {
+            alpha: vec![5.033151319, 1.169596125, 0.38038896],
+            contr: vec![Contraction {
+                l: 0,
+                pure: false,
+                coeff: vec![
+                    -0.2394130049456894,
+                    0.32023423543952656,
+                    0.24168555455632082,
+                ],
+            }],
+            origin: vector![0.0, -0.143225816552, 0.0],
+        },
+        Shell {
+            alpha: vec![5.033151319, 1.169596125, 0.38038896],
+            contr: vec![Contraction {
+                l: 1,
+                pure: false,
+                coeff: vec![
+                    1.6754501961195145,
+                    1.0535680440115096,
+                    0.1669028790880833,
+                ],
+            }],
+            origin: vector![0.0, -0.143225816552, 0.0],
+        },
+        Shell {
+            alpha: vec![3.425250914, 0.6239137298, 0.168855404],
+            contr: vec![Contraction {
+                l: 0,
+                pure: false,
+                coeff: vec![
+                    0.2769343550790519,
+                    0.26783885160947885,
+                    0.08347367112984118,
+                ],
+            }],
+            origin: vector![1.638036840407, 1.136548822547, -0.0],
+        },
+        Shell {
+            alpha: vec![3.425250914, 0.6239137298, 0.168855404],
+            contr: vec![Contraction {
+                l: 0,
+                pure: false,
+                coeff: vec![
+                    0.2769343550790519,
+                    0.26783885160947885,
+                    0.08347367112984118,
+                ],
+            }],
+            origin: vector![-1.638036840407, 1.136548822547, -0.0],
+        },
+    ]);
+    assert!(got.len() == want.len());
+    assert_eq!(got, want, "got\n{:#?}, want\n{:#?}", got, want);
+}
+
 impl Basis {
+    /// load the basis set from `path` and combine it with the origins in `mol`.
+    /// panics if `path` cannot be read, if its data cannot be deserialized, and
+    /// if it does not contain one of the elements in `mol`.
+    #[allow(unused)]
+    pub(crate) fn load(path: impl AsRef<Path>, mol: &Molecule) -> Self {
+        let data = read_to_string(&path).unwrap();
+        let raw: json::JsonBasis = serde_json::from_str(&data).unwrap();
+        let mut shells = Vec::new();
+        for Atom {
+            atomic_number,
+            coord,
+        } in &mol.atoms
+        {
+            for shell in &raw.elements[atomic_number].electron_shells {
+                let alpha: Vec<f64> = shell
+                    .exponents
+                    .iter()
+                    .map(|s| s.parse().unwrap())
+                    .collect();
+                for (i, l) in shell.angular_momentum.iter().enumerate() {
+                    let coeff: Vec<f64> = shell.coefficients[i]
+                        .iter()
+                        .map(|s| s.parse().unwrap())
+                        .collect();
+                    shells.push(Shell::new(
+                        alpha.clone(),
+                        vec![Contraction::new(*l, false, coeff)],
+                        *coord,
+                    ));
+                }
+            }
+        }
+        Self(shells)
+    }
+
     pub(crate) fn nbasis(&self) -> usize {
         self.0.iter().map(|s| s.size()).sum()
     }

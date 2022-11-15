@@ -3,6 +3,7 @@ use super::DF_KMINUS1;
 use crate::Vec3;
 
 /// A shell in a basis set
+#[derive(PartialEq, Debug)]
 pub(crate) struct Shell {
     /// exponents of primitive Gaussians
     pub(crate) alpha: Vec<f64>,

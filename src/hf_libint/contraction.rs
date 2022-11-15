@@ -1,3 +1,4 @@
+#[derive(PartialEq, Debug)]
 pub(crate) struct Contraction {
     /// angular momentum
     pub(crate) l: usize,

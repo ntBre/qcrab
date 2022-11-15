@@ -1,0 +1,308 @@
+
+
+{
+  "molssi_bse_schema": {
+    "schema_type": "complete",
+    "schema_version": "0.1"
+  },
+  "revision_description": "Data from the original Basis Set Exchange",
+  "revision_date": "2007-01-15",
+  "elements": {
+    "1": {
+      "electron_shells": [
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            0
+          ],
+          "exponents": [
+            "19.2406",
+            "2.89920",
+            "0.65340"
+          ],
+          "coefficients": [
+            [
+              "0.032828",
+              "0.231208",
+              "0.817238"
+            ]
+          ]
+        },
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            0
+          ],
+          "exponents": [
+            "0.17760"
+          ],
+          "coefficients": [
+            [
+              "1.000000"
+            ]
+          ]
+        }
+      ],
+      "references": [
+        {
+          "reference_description": "DZ      Double Zeta: 2 Functions/AO",
+          "reference_keys": [
+            "dunning1970a"
+          ]
+        }
+      ]
+    },
+    "6": {
+      "electron_shells": [
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            0
+          ],
+          "exponents": [
+            "4232.61",
+            "634.882",
+            "146.097",
+            "42.4974",
+            "14.1892",
+            "1.96660"
+          ],
+          "coefficients": [
+            [
+              "0.002029",
+              "0.015535",
+              "0.075411",
+              "0.257121",
+              "0.596555",
+              "0.242517"
+            ]
+          ]
+        },
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            0
+          ],
+          "exponents": [
+            "5.14770"
+          ],
+          "coefficients": [
+            [
+              "1.000000"
+            ]
+          ]
+        },
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            0
+          ],
+          "exponents": [
+            "0.4962"
+          ],
+          "coefficients": [
+            [
+              "1.000000"
+            ]
+          ]
+        },
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            0
+          ],
+          "exponents": [
+            "0.1533"
+          ],
+          "coefficients": [
+            [
+              "1.000000"
+            ]
+          ]
+        },
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            1
+          ],
+          "exponents": [
+            "18.1557",
+            "3.98640",
+            "1.14290",
+            "0.35940"
+          ],
+          "coefficients": [
+            [
+              "0.018534",
+              "0.115442",
+              "0.386206",
+              "0.640089"
+            ]
+          ]
+        },
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            1
+          ],
+          "exponents": [
+            "0.11460"
+          ],
+          "coefficients": [
+            [
+              "1.000000"
+            ]
+          ]
+        }
+      ],
+      "references": [
+        {
+          "reference_description": "DZ      Double Zeta: 2 Functions/AO",
+          "reference_keys": [
+            "dunning1970a"
+          ]
+        }
+      ]
+    },
+    "8": {
+      "electron_shells": [
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            0
+          ],
+          "exponents": [
+            "7816.54",
+            "1175.82",
+            "273.188",
+            "81.1696",
+            "27.1836",
+            "3.41360"
+          ],
+          "coefficients": [
+            [
+              "0.002031",
+              "0.015436",
+              "0.073771",
+              "0.247606",
+              "0.611832",
+              "0.241205"
+            ]
+          ]
+        },
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            0
+          ],
+          "exponents": [
+            "9.5322"
+          ],
+          "coefficients": [
+            [
+              "1.000000"
+            ]
+          ]
+        },
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            0
+          ],
+          "exponents": [
+            "0.9398"
+          ],
+          "coefficients": [
+            [
+              "1.000000"
+            ]
+          ]
+        },
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            0
+          ],
+          "exponents": [
+            "0.2846"
+          ],
+          "coefficients": [
+            [
+              "1.000000"
+            ]
+          ]
+        },
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            1
+          ],
+          "exponents": [
+            "35.1832",
+            "7.9040",
+            "2.3051",
+            "0.7171"
+          ],
+          "coefficients": [
+            [
+              "0.019580",
+              "0.124189",
+              "0.394727",
+              "0.627375"
+            ]
+          ]
+        },
+        {
+          "function_type": "gto",
+          "region": "",
+          "angular_momentum": [
+            1
+          ],
+          "exponents": [
+            "0.2137"
+          ],
+          "coefficients": [
+            [
+              "1.000000"
+            ]
+          ]
+        }
+      ],
+      "references": [
+        {
+          "reference_description": "DZ      Double Zeta: 2 Functions/AO",
+          "reference_keys": [
+            "dunning1970a"
+          ]
+        }
+      ]
+    }
+  },
+  "version": "0",
+  "function_types": [
+    "gto"
+  ],
+  "names": [
+    "DZ (Dunning-Hay)"
+  ],
+  "tags": [],
+  "family": "dunning_hay",
+  "description": "DZ      Double Zeta: 2 Functions/AO",
+  "role": "orbital",
+  "auxiliaries": {},
+  "name": "DZ (Dunning-Hay)"
+}
+

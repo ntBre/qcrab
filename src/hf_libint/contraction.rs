@@ -15,11 +15,15 @@ impl Contraction {
         Self { l, pure, coeff }
     }
 
+    pub(crate) const fn cartesian_size(&self) -> usize {
+        (self.l + 1) * (self.l + 2) / 2
+    }
+
     pub(crate) const fn size(&self) -> usize {
         if self.pure {
             2 * self.l + 1
         } else {
-            (self.l + 1) * (self.l + 2) / 2
+            self.cartesian_size()
         }
     }
 }

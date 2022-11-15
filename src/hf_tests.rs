@@ -162,7 +162,7 @@ fn test_do_scf() {
             eps: 1e-7,
         },
     ];
-    for test in tests {
+    for test in &tests[..] {
         let dir = Path::new(test.dir);
         let s = if test.dir.contains("STO-3G") {
             let mol = Molecule::load(dir.join("geom.dat"));
@@ -175,7 +175,11 @@ fn test_do_scf() {
         // } else if test.dir.ends_with("DZP") {
         //     let mol = Molecule::load(dir.join("geom.dat"));
         //     let shells = Basis::load("basis_sets/dzp.json", &mol);
-        //     shells.overlap_ints()
+        //     // let want = overlap_integrals(dir.join("s.dat"));
+        //     // println!("want={:.4}", want);
+        //     let got = shells.overlap_ints();
+        //     // println!("got={:.4}", got);
+        //     got
         } else {
             overlap_integrals(dir.join("s.dat"))
         };

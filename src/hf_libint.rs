@@ -80,3 +80,21 @@ fn overlap() {
         panic!("differ by {:.2e}", (got - want).abs().max());
     }
 }
+
+#[cfg(test)]
+mod benches {
+    extern crate test;
+
+    use test::Bencher;
+
+    use crate::molecule::Molecule;
+
+    use super::basis;
+
+    #[bench]
+    fn overlap(b: &mut Bencher) {
+        let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
+        let shells = basis::Basis::sto3g(&mol);
+        b.iter(|| shells.overlap_ints());
+    }
+}

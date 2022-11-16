@@ -1,3 +1,5 @@
+#![feature(test)]
+
 use std::fmt::Display;
 
 use nalgebra as na;

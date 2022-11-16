@@ -9,6 +9,8 @@ use std::{f64::consts::PI, fs::read_to_string, ops::Index, path::Path};
 #[derive(PartialEq, Debug)]
 pub(crate) struct Basis {
     pub(crate) shells: Vec<Shell>,
+    pub(crate) shell_ids: Vec<usize>,
+    pub(crate) angular_momenta: Vec<(usize, usize, usize)>,
 }
 
 mod json {
@@ -41,80 +43,107 @@ fn load() {
 
     let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
     let got = Basis::load("basis_sets/sto-3g.json", &mol);
-    let want = Basis {
-        shells: vec![
-            Shell {
-                alpha: vec![130.7093214, 23.80886605, 6.443608313],
-                contr: vec![Contraction {
-                    l: 0,
-                    pure: false,
-                    coeff: vec![
-                        4.251943277787213,
-                        4.11229442420408,
-                        1.2816225514343584,
-                    ],
-                }],
-                origin: vector![0.0, -0.143225816552, 0.0],
-            },
-            Shell {
-                alpha: vec![5.033151319, 1.169596125, 0.38038896],
-                contr: vec![Contraction {
-                    l: 0,
-                    pure: false,
-                    coeff: vec![
-                        -0.2394130049456894,
-                        0.32023423543952656,
-                        0.24168555455632082,
-                    ],
-                }],
-                origin: vector![0.0, -0.143225816552, 0.0],
-            },
-            Shell {
-                alpha: vec![5.033151319, 1.169596125, 0.38038896],
-                contr: vec![Contraction {
-                    l: 1,
-                    pure: false,
-                    coeff: vec![
-                        1.6754501961195145,
-                        1.0535680440115096,
-                        0.1669028790880833,
-                    ],
-                }],
-                origin: vector![0.0, -0.143225816552, 0.0],
-            },
-            Shell {
-                alpha: vec![3.425250914, 0.6239137298, 0.168855404],
-                contr: vec![Contraction {
-                    l: 0,
-                    pure: false,
-                    coeff: vec![
-                        0.2769343550790519,
-                        0.26783885160947885,
-                        0.08347367112984118,
-                    ],
-                }],
-                origin: vector![1.638036840407, 1.136548822547, -0.0],
-            },
-            Shell {
-                alpha: vec![3.425250914, 0.6239137298, 0.168855404],
-                contr: vec![Contraction {
-                    l: 0,
-                    pure: false,
-                    coeff: vec![
-                        0.2769343550790519,
-                        0.26783885160947885,
-                        0.08347367112984118,
-                    ],
-                }],
-                origin: vector![-1.638036840407, 1.136548822547, -0.0],
-            },
-        ],
-    };
+    let want = Basis::new(vec![
+        Shell {
+            alpha: vec![130.7093214, 23.80886605, 6.443608313],
+            contr: vec![Contraction {
+                l: 0,
+                pure: false,
+                coeff: vec![
+                    4.251943277787213,
+                    4.11229442420408,
+                    1.2816225514343584,
+                ],
+            }],
+            origin: vector![0.0, -0.143225816552, 0.0],
+        },
+        Shell {
+            alpha: vec![5.033151319, 1.169596125, 0.38038896],
+            contr: vec![Contraction {
+                l: 0,
+                pure: false,
+                coeff: vec![
+                    -0.2394130049456894,
+                    0.32023423543952656,
+                    0.24168555455632082,
+                ],
+            }],
+            origin: vector![0.0, -0.143225816552, 0.0],
+        },
+        Shell {
+            alpha: vec![5.033151319, 1.169596125, 0.38038896],
+            contr: vec![Contraction {
+                l: 1,
+                pure: false,
+                coeff: vec![
+                    1.6754501961195145,
+                    1.0535680440115096,
+                    0.1669028790880833,
+                ],
+            }],
+            origin: vector![0.0, -0.143225816552, 0.0],
+        },
+        Shell {
+            alpha: vec![3.425250914, 0.6239137298, 0.168855404],
+            contr: vec![Contraction {
+                l: 0,
+                pure: false,
+                coeff: vec![
+                    0.2769343550790519,
+                    0.26783885160947885,
+                    0.08347367112984118,
+                ],
+            }],
+            origin: vector![1.638036840407, 1.136548822547, -0.0],
+        },
+        Shell {
+            alpha: vec![3.425250914, 0.6239137298, 0.168855404],
+            contr: vec![Contraction {
+                l: 0,
+                pure: false,
+                coeff: vec![
+                    0.2769343550790519,
+                    0.26783885160947885,
+                    0.08347367112984118,
+                ],
+            }],
+            origin: vector![-1.638036840407, 1.136548822547, -0.0],
+        },
+    ]);
     assert!(got.len() == want.len());
     assert_eq!(got, want, "got\n{:#?}, want\n{:#?}", got, want);
 }
 
 impl Basis {
+    pub(crate) fn new(shells: Vec<Shell>) -> Self {
+        let mut ls = Vec::new();
+        let mut ss = Vec::new();
+        for (i, shell) in shells.iter().enumerate() {
+            let l = match shell.contr[0].l {
+                0 => vec![(0, 0, 0)],
+                1 => vec![(1, 0, 0), (0, 1, 0), (0, 0, 1)],
+                2 => vec![
+                    (2, 0, 0),
+                    (0, 2, 0),
+                    (0, 0, 2),
+                    (0, 1, 1),
+                    (1, 1, 0),
+                    (1, 0, 1),
+                ],
+                _ => panic!("unmatched l value {}", shell.contr[0].l),
+            };
+            let s = vec![i; l.len()];
+            ls.extend(l);
+            ss.extend(s);
+        }
+
+        Self {
+            shells,
+            shell_ids: ss,
+            angular_momenta: ls,
+        }
+    }
+
     /// load the basis set from `path` and combine it with the origins in `mol`.
     /// panics if `path` cannot be read, if its data cannot be deserialized, and
     /// if it does not contain one of the elements in `mol`.
@@ -151,7 +180,7 @@ impl Basis {
                 }
             }
         }
-        Self { shells }
+        Self::new(shells)
     }
 
     pub(crate) fn nbasis(&self) -> usize {
@@ -246,7 +275,7 @@ impl Basis {
             }
             // shells.push(
         }
-        Self { shells }
+        Self::new(shells)
     }
 
     #[allow(unused)]
@@ -258,32 +287,13 @@ impl Basis {
         let n = self.nbasis();
         let mut result = Dmat::zeros(n, n);
 
-        let mut ls = Vec::new();
-        let mut ss = Vec::new();
-        for (i, shell) in self.shells.iter().enumerate() {
-            let l = match shell.contr[0].l {
-                0 => vec![(0, 0, 0)],
-                1 => vec![(1, 0, 0), (0, 1, 0), (0, 0, 1)],
-                2 => vec![
-                    (2, 0, 0),
-                    (0, 2, 0),
-                    (0, 0, 2),
-                    (0, 1, 1),
-                    (1, 1, 0),
-                    (1, 0, 1),
-                ],
-                _ => panic!("unmatched l value {}", shell.contr[0].l),
-            };
-            let s = vec![i; l.len()];
-            ls.extend(l);
-            ss.extend(s);
-        }
-
         // loop over orbitals
-        for (i, (l1x, l1y, l1z)) in ls.iter().enumerate() {
-            for (j, (l2x, l2y, l2z)) in ls[..=i].iter().enumerate() {
-                let s1 = &self.shells[ss[i]];
-                let s2 = &self.shells[ss[j]];
+        for (i, (l1x, l1y, l1z)) in self.angular_momenta.iter().enumerate() {
+            for (j, (l2x, l2y, l2z)) in
+                self.angular_momenta[..=i].iter().enumerate()
+            {
+                let s1 = &self.shells[self.shell_ids[i]];
+                let s2 = &self.shells[self.shell_ids[j]];
                 let a = s1.origin;
                 let b = s2.origin;
                 let ab = a - b;
@@ -322,8 +332,8 @@ impl Basis {
 
 /// compute individual S_[xyz] values
 fn s_xyz(
-    ax: isize,
-    bx: isize,
+    ax: usize,
+    bx: usize,
     pa: f64,
     pb: f64,
     alpha: &f64,
@@ -333,9 +343,9 @@ fn s_xyz(
     for ix in 0..=ax {
         for jx in 0..=bx {
             if (ix + jx) % 2 != 1 {
-                acc += binom(ax, ix)
-                    * binom(bx, jx)
-                    * dfact(ix + jx - 1)
+                acc += binom(ax as isize, ix as isize)
+                    * binom(bx as isize, jx as isize)
+                    * dfact((ix + jx) as isize - 1)
                     * pa.powi((ax - ix) as i32)
                     * pb.powi((bx - jx) as i32)
                     / ((2.0 * (alpha + beta)).powi(((ix + jx) / 2) as i32));

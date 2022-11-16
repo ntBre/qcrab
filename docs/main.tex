@@ -109,6 +109,71 @@ and $\beta$ in Eqn.~\ref{eq:sx} are $\alpha_n$ and $\beta_m$, and $\vb P$ must
 also be computed on each iteration, again because of its dependence on $\alpha$
 and $\beta$.
 
+\section{Kinetic Integrals}
+\label{sec:kinetic}
+
+Like the overlap integrals, the kinetic energy integrals, $K$, can be separated
+into their $x$, $y$, and $z$ components as shown in Ref.~\citenum{ho13}:
+
+\begin{equation}
+  \label{eq:k}
+  K = K_x + K_Y + K_Z,
+\end{equation}
+
+\noindent
+where the individual components, for example $K_x$, can be expressed as
+combinations of overlap integrals and one new term, $k_x$:
+
+\begin{equation}
+  \label{eq:kx}
+  K_x = \eab \bigg[ \frac{\pi}{\alpha + \beta} \bigg]^\frac{3}{2}
+  k_xs_ys_z,
+\end{equation}
+
+\noindent
+where $\eab$ has the same meaning as before. $s_y$ and $s_z$ are related the
+$S_y$ and $S_z$ defined in the previous section, but without the
+$\sqrt{\frac{\pi}{\alpha + \beta}}$ prefactor. $k_x$ itself is define by the
+recurrence relation:
+
+\begin{align}
+  \label{eq:lkx}
+  k_x = \frac{3}{4}
+  \big [
+  & a_xb_xs_x(a_x-1,b_x-1) \\
+  &- 2 \alpha b_x s_x(a_x + 1, b_x-1) \nonumber \\
+  &- 2 a_x \beta s_x(a_x - 1, b_x + 1) \nonumber \\
+  &+ 4 \alpha \beta s_x(a_x + 1, b_x + 1) \nonumber
+  \big ],
+\end{align}
+
+\noindent
+where
+
+\begin{equation}
+  \label{eq:kx00}
+  k_x(0,0) = 2 \alpha \beta s_x(1,1),
+\end{equation}
+
+\begin{equation}
+  \label{eq:kxa0}
+  k_x(a_x,0) = - a_x \beta s_x(a_x -1,1)+2\alpha\beta s_x(a_x +1 1),
+\end{equation}
+
+\noindent and
+
+\begin{equation}
+  \label{eq:kx0b}
+  k_x(0, b_x) = - \alpha b_x s_x(1, b_x-1) + 2 \alpha \beta s_x(1, b_x + 1).
+\end{equation}
+
+Although Ref.~\citenum{ho13} calls this a recurrence relation, it's not clear to
+me where the recursion is since it's written in terms of overlap integrals, not
+in terms of recurring kinetic-energy integrals. Also, Ref.~\citenum{ho13} uses a
+factor of $\frac{1}{2}$ in front of Eqn.~\ref{eq:lkx}, but I had to set mine to
+$\frac{3}{4}$ to get it to work. I have no idea why this is the case, but it
+works for the both the STO-3G and DZ basis sets.
+
 \bibliography{refs}
 
 \end{document}

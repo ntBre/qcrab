@@ -257,7 +257,19 @@ impl Basis {
         let mut ls = Vec::new();
         let mut ss = Vec::new();
         for (i, shell) in self.0.iter().enumerate() {
-            let l = l_perm(shell.contr[0].l);
+            let l = match shell.contr[0].l {
+                0 => vec![(0, 0, 0)],
+                1 => vec![(1, 0, 0), (0, 1, 0), (0, 0, 1)],
+                2 => vec![
+                    (2, 0, 0),
+                    (0, 2, 0),
+                    (0, 0, 2),
+                    (0, 1, 1),
+                    (1, 1, 0),
+                    (1, 0, 1),
+                ],
+                _ => panic!("unmatched l value {}", shell.contr[0].l),
+            };
             let s = vec![i; l.len()];
             ls.extend(l);
             ss.extend(s);
@@ -301,24 +313,6 @@ impl Basis {
             }
         }
         result
-    }
-}
-
-/// return the permutations of angular momentum values associated with `l`.
-/// panics if `l` greater than 2
-fn l_perm(l: usize) -> Vec<(isize, isize, isize)> {
-    match l {
-        0 => vec![(0, 0, 0)],
-        1 => vec![(1, 0, 0), (0, 1, 0), (0, 0, 1)],
-        2 => vec![
-            (2, 0, 0),
-            (0, 2, 0),
-            (0, 0, 2),
-            (0, 1, 1),
-            (1, 1, 0),
-            (1, 0, 1),
-        ],
-        _ => panic!("unmatched l value {l}"),
     }
 }
 

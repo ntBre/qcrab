@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use super::{contraction::Contraction, shell::Shell};
 use crate::{
     hf_libint::dfact,
@@ -7,13 +5,7 @@ use crate::{
     Dmat,
 };
 use itertools::Itertools;
-use std::{
-    cmp::{max, min},
-    f64::consts::PI,
-    fs::read_to_string,
-    ops::Index,
-    path::Path,
-};
+use std::{f64::consts::PI, fs::read_to_string, ops::Index, path::Path};
 
 #[derive(PartialEq, Debug)]
 pub(crate) struct Basis(pub(crate) Vec<Shell>);
@@ -320,6 +312,24 @@ impl Basis {
                         let pa = p - a;
                         let pb = p - b;
 
+                        if s1.contr[0].pure || s2.contr[0].pure {
+                            if s1.contr[0].pure {
+                                let x2 = s1.origin.x.powi(2);
+                                let y2 = s1.origin.x.powi(2);
+                                let z2 = s1.origin.x.powi(2);
+                                let r2 = x2 + y2 + z2;
+                                let r = r2.sqrt();
+                                // radial part
+                                let rl = r.powi(s1.contr[0].l as i32)
+                                    * f64::exp(-alpha * r2);
+                                // from the table on wikipedia
+                                let y22 =
+                                    0.25 * f64::sqrt(15.0 / PI) * (x2 - y2)
+                                        / r2;
+                            }
+                            panic!("can't handle spherical harmonics yet");
+                        }
+
                         let ls1 = l_perm(l1);
                         let ls2 = l_perm(l2);
 
@@ -356,261 +366,6 @@ impl Basis {
         }
         result
     }
-}
-
-fn tform_cols(n1: usize, l: usize, src: Vec<f64>) -> Vec<f64> {
-    let coefs = SolidHarmonicCoeffs::new(l);
-
-    let nc = (l + 1) * (l + 2) / 2;
-    let n = 2 * l + 1;
-    let mut tgt = vec![0.0; n1 * n];
-
-    // loop over shg
-    for s in 0..n {
-        let nc_s = coefs.nnz(s); // # of cartesians contributing to shg s
-        let c_idxs = coefs.row_idx(s); // indices of cartesians contributing to shg s
-        let c_vals = coefs.row_values(s); // coefficients of cartesians contributing to shg s
-
-        let tgt_blk_s_offset = s;
-
-        for ic in 0..nc_s {
-            let c = c_idxs[ic];
-            let s_c_coeff = c_vals[ic];
-
-            let src_blk_s = &src[c..];
-            let tgt_blk_s = &mut tgt[tgt_blk_s_offset..];
-
-            // loop over other dims
-            let mut si = 0;
-            let mut ti = 0;
-            (0..n1).for_each(|_| {
-                tgt_blk_s[ti] += s_c_coeff * src_blk_s[si];
-                si += nc;
-                ti += n;
-            });
-        }
-    }
-
-    tgt
-}
-
-fn tform_rows(l: usize, n2: usize, src: Vec<f64>) -> Vec<f64> {
-    let coefs = SolidHarmonicCoeffs::new(l);
-    let n = 2 * l + 1;
-    let mut tgt = vec![0.0; n * n2];
-    for s in 0..n {
-        let nc_s = coefs.nnz(s);
-        let c_idxs = coefs.row_idx(s);
-        let c_vals = coefs.row_values(s);
-        let tgt_blk_s_offset = s * n2;
-        for ic in 0..nc_s {
-            let c = c_idxs[ic];
-            let s_c_coeff = c_vals[ic];
-            let src_blk_s = &src[c * n2..];
-            let tgt_blk_s = &mut tgt[tgt_blk_s_offset..];
-
-            // loop over other dims
-            (0..n2).for_each(|i2| {
-                tgt_blk_s[i2] += s_c_coeff * src_blk_s[ic];
-            });
-        }
-    }
-    tgt
-}
-
-struct SolidHarmonicCoeffs {
-    /// elements
-    values: Vec<f64>,
-
-    /// column indices
-    colidx: Vec<usize>,
-
-    /// "pointer" to the beginning of each row
-    row_offset: Vec<usize>,
-}
-
-impl SolidHarmonicCoeffs {
-    fn new(l: usize) -> Self {
-        let npure = 2 * l + 1;
-        let ncart = (l + 1) * (l + 2) / 2;
-        let mut full_coeff = vec![0.0; npure * ncart];
-        let mut m = -(l as isize);
-        // assuming LIBINT_SHGSHELL_ORDERING_STANDARD, not GAUSSIAN ordering
-        for pure_idx in 0..npure {
-            let mut cart_idx = 0;
-            // this is the FOR_CART macro
-            for lx in (0..=l).rev() {
-                for ly in (0..l - lx).rev() {
-                    let lz = l - lx - ly;
-                    full_coeff[pure_idx * ncart + cart_idx] =
-                        coeff(l, m, lx, ly, lz);
-                    cart_idx += 1;
-                }
-            }
-            m += 1;
-        }
-
-        let nnz = full_coeff.iter().map(|c| usize::from(*c != 0.0)).sum();
-        let mut values = vec![0.0; nnz];
-        let mut colidx = vec![0; nnz];
-        let mut row_offset = vec![0; npure + 1];
-
-        let mut pc = 0;
-        let mut cnt = 0;
-        (0..npure).for_each(|p| {
-            row_offset[p] = cnt;
-            for c in 0..ncart {
-                if full_coeff[pc] != 0.0 {
-                    values[cnt] = full_coeff[pc];
-                    colidx[cnt] = c;
-                    cnt += 1;
-                }
-                pc += 1;
-            }
-        });
-        row_offset[npure] = cnt;
-
-        Self {
-            values,
-            colidx,
-            row_offset,
-        }
-    }
-
-    fn nnz(&self, r: usize) -> usize {
-        self.row_offset[r + 1] - self.row_offset[r]
-    }
-
-    fn row_idx(&self, r: usize) -> &[usize] {
-        &self.colidx[self.row_offset[r]..]
-    }
-
-    fn row_values(&self, r: usize) -> &[f64] {
-        &self.values[self.row_offset[r]..]
-    }
-}
-
-fn parity(i: isize) -> isize {
-    if i % 2 != 0 {
-        -1
-    } else {
-        1
-    }
-}
-
-fn coeff(l: usize, m: isize, lx: usize, ly: usize, lz: usize) -> f64 {
-    let l = l as isize;
-    let lx = lx as isize;
-    let ly = ly as isize;
-    let lz = lz as isize;
-    let abs_m = m.abs();
-    if (lx + ly - abs_m) % 2 != 0 {
-        return 0.0;
-    }
-
-    let j = (lx + ly - abs_m) / 2;
-    if j < 0 {
-        return 0.0;
-    }
-
-    /*----------------------------------------------------------------------------------------
-     Checking whether the cartesian polynomial contributes to the requested component of Ylm
-    ----------------------------------------------------------------------------------------*/
-    let comp = if m >= 0 { 1 } else { -1 };
-    /*  if (comp != ((abs_m-lx)%2 ? -1 : 1))*/
-    let i = abs_m - lx;
-    if comp != parity(i.abs()) {
-        return 0.0;
-    }
-
-    let mut pfac = f64::sqrt(
-        (((fac(2 * lx)) * (fac(2 * ly)) * (fac(2 * lz))) / fac(2 * l))
-            * ((fac(l - abs_m)) / (fac(l)))
-            * ((1.0) / fac(l + abs_m))
-            * ((1.0) / (fac(lx) * fac(ly) * fac(lz))),
-    );
-    /*  pfac = sqrt(fac[l-abs_m]/(fac[l]*fac[l]*fac[l+abs_m]));*/
-    pfac /= (1 << l) as f64;
-    if m < 0 {
-        pfac *= parity((i - 1) / 2) as f64;
-    } else {
-        pfac *= parity(i / 2) as f64;
-    }
-
-    let i_min = j;
-    let i_max = (l - abs_m) / 2;
-    let mut sum = 0.0;
-    for i in i_min..=i_max {
-        let mut pfac1 = binom(l, i) * binom(i, j);
-        pfac1 *= (parity(i) * factorial(2 * (l - i))) as f64
-            / fac(l - abs_m - 2 * i);
-        let mut sum1 = 0.0;
-        let k_min = max((lx - abs_m) / 2, 0);
-        let k_max = min(j, lx / 2);
-        for k in k_min..=k_max {
-            if lx - 2 * k <= abs_m {
-                sum1 +=
-                    binom(j, k) * binom(abs_m, lx - 2 * k) * parity(k) as f64;
-            }
-        }
-        sum += pfac1 * sum1;
-    }
-    sum *= f64::sqrt(
-        (dfact(2 * l)) / (dfact(2 * lx) * dfact(2 * ly) * dfact(2 * lz)),
-    );
-
-    if m == 0 {
-        pfac * sum
-    } else {
-        std::f64::consts::SQRT_2 * pfac * sum
-    }
-}
-
-fn tform(l_row: usize, l_col: usize, source_blk: Vec<f64>) -> Vec<f64> {
-    // in libint these are built by calling `instance` but as far as I can tell
-    // `instance` just returns the lth element of an iterator of
-    // SolidHarmoniccoeffs, which should just be the same as calling my `new`
-    // directly with `l`
-    let coefs_row = SolidHarmonicCoeffs::new(l_row);
-    let coefs_col = SolidHarmonicCoeffs::new(l_col);
-
-    let ncart_col = (l_col + 1) * (l_col + 2) / 2;
-    let npure_row = 2 * l_row + 1;
-    let npure_col = 2 * l_col + 1;
-    let mut target_blk = vec![0.0; npure_row * npure_col];
-
-    // loop over row shg
-    for s1 in 0..npure_row {
-        let nc1 = coefs_row.nnz(s1); // # of cartesians contributing to shg s1
-        let c1_idxs = coefs_row.row_idx(s1); // indices of cartesians contributing to shg s1
-        let c1_vals = coefs_row.row_values(s1); // coefficients of cartesians contributing to shg s1
-
-        let target_blk_s1 = &mut target_blk[s1 * npure_col..];
-
-        // loop over col shg
-        (0..npure_col).for_each(|s2| {
-            let nc2 = coefs_col.nnz(s2); // # of cartesians contributing to shg s2
-            let c2_idxs = coefs_col.row_idx(s2); // indices of cartesians contributing to shg s2
-            let c2_vals = coefs_col.row_values(s2); // coefficients of cartesians contributing to shg s2
-
-            for ic1 in 0..nc1 {
-                let c1 = c1_idxs[ic1];
-                let s1_c1_coeff = c1_vals[ic1];
-
-                let source_blk_c1 = &source_blk[c1 * ncart_col..];
-
-                for ic2 in 0..nc2 {
-                    let c2 = c2_idxs[ic2];
-                    let s2_c2_coeff = c2_vals[ic2];
-
-                    target_blk_s1[s2] +=
-                        source_blk_c1[c2] * s1_c1_coeff * s2_c2_coeff;
-                }
-            }
-        });
-    }
-
-    target_blk
 }
 
 /// return the permutations of angular momentum values associated with `l`.
@@ -664,10 +419,6 @@ fn factorial(mut i: isize) -> isize {
         i -= 1;
     }
     prod
-}
-
-fn fac(i: isize) -> f64 {
-    factorial(i) as f64
 }
 
 /// return the binomial coefficient n choose k

@@ -4,6 +4,12 @@
 \usepackage{amsmath}
 \usepackage{verbatim}
 \usepackage{listings}
+\usepackage{xcolor}
+\definecolor{bg}{RGB}{240,240,240}
+\lstset{
+  basicstyle=\linespread{1.0}\ttfamily,
+  backgroundcolor=\color{bg},
+  }
 
 \author{Brent R. Westbrook}
 \title{qcrab documentation}
@@ -59,44 +65,37 @@ primitive Gaussian functions, we must loop over these combinations, as well as
 the primitives.
 
 In the code for \verb|overlap_ints|, I first loop over the shells and collect
-these possibilities, as shown in Listing~\ref{lst:ls}. The helper function
-\verb|l_perm| is shown in Listing~\ref{lst:lperm}.
+these possibilities, as shown in Listing~\ref{lst:ls}.
 
 \begin{lstlisting}[caption={Collecting $l$ values for shells}, label={lst:ls}]
-  let mut ls = Vec::new();
-  let mut ss = Vec::new();
-  for (i, shell) in self.0.iter().enumerate() {
-    let l = l_perm(shell.contr[0].l);
+let mut ls = Vec::new();
+let mut ss = Vec::new();
+for (i, shell) in self.0.iter().enumerate() {
+    let l = match shell.contr[0].l {
+        0 => vec![(0, 0, 0)],
+        1 => vec![(1, 0, 0), (0, 1, 0), (0, 0, 1)],
+        2 => vec![
+            (2, 0, 0),
+            (0, 2, 0),
+            (0, 0, 2),
+            (0, 1, 1),
+            (1, 1, 0),
+            (1, 0, 1),
+        ],
+        _ => panic!("unmatched l value {}", shell.contr[0].l),
+    };
     let s = vec![i; l.len()];
     ls.extend(l);
     ss.extend(s);
-  }
-\end{lstlisting}
-
-\begin{lstlisting}[caption={l\_perm}, label={lst:lperm}]
-  fn l_perm(l: usize) -> Vec<(isize, isize, isize)> {
-    match l {
-      0 => vec![(0, 0, 0)],
-      1 => vec![(1, 0, 0), (0, 1, 0), (0, 0, 1)],
-      2 => vec![
-      (2, 0, 0),
-      (0, 2, 0),
-      (0, 0, 2),
-      (0, 1, 1),
-      (1, 1, 0),
-      (1, 0, 1),
-      ],
-      _ => panic!("unmatched l value {l}"),
-    }
-  }
+}
 \end{lstlisting}
 
 With the combinations of angular momenta stored in \verb|ls| and the shells
 associated with them in \verb|ss|, we can iterate over them, effectively
 iterating over the orbitals themselves. For each combination of orbitals, we
 compute the overlap integral for the orbitals, $S_{ij}$, as the sum over
-primitives, where $N$ is the number of primitives in shell 1, and $M$ is the
-number of primitives in shell 1:
+primitives, where $N$ is the number of primitives in shell $i$, and $M$ is the
+number of primitives in shell $j$:
 
 \begin{equation}
   \label{eq:sij}

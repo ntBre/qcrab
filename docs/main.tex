@@ -1,0 +1,114 @@
+\documentclass{achemso}
+
+\usepackage{physics}
+\usepackage{amsmath}
+\usepackage{verbatim}
+\usepackage{listings}
+
+\author{Brent R. Westbrook}
+\title{qcrab documentation}
+\date{}
+
+% must be used in math mode
+\newcommand\eab{E_{\vb A \vb B}}
+
+\begin{document}
+
+\maketitle
+
+\section{Overlap Integrals}
+\label{sec:overlap}
+
+As shown in Ref. \citenum{ho12}, the expression for an overlap integral of two
+primitive Gaussian functions, $S$, is given by:
+
+\begin{equation}
+  \label{eq:s}
+  S = \eab S_x S_y S_z,
+\end{equation}
+
+\noindent
+where $\eab = \exp[-\frac{\alpha\beta}{\alpha + \beta}|\vb A - \vb B|^2]$ and
+$S_x$, for example, is given by:
+
+\begin{equation}
+  \label{eq:sx}
+  S_x = \sqrt{\frac{\pi}{\alpha + \beta}}
+  \sum_{i_x = 0}^{a_x}\sum_{j_x = 0}^{b_x}
+  \binom{a_x}{i_x} \binom{b_x}{j_x}
+  \frac{(i_x + j_x + 1)!!}{[2(\alpha + \beta)]^{(i_x + j_x)/2}}
+  (P_x - A_x)^{a_x - i_x}
+  (P_x - B_x)^{b_x - j_x}
+\end{equation}
+
+\noindent
+As a note, $|\vb A - \vb B|^2$ is the magnitude of $\vb A - \vb B$
+($\sqrt{\sum_i (a_i - b_i)^2}$) squared ($\sum_i (a_i - b_i)^2$), or
+$(\vb A - \vb B) \cdot (\vb A - \vb B)$.
+
+In all of these expressions, $\alpha$ is the exponent for the first primitive
+Gaussian function, $\beta$ is the exponent for the second primitive Gaussian,
+$\vb P = \frac{\alpha \vb A + \beta \vb B}{\alpha + \beta}$, $\vb A$ and $\vb B$
+are the origins of the basis functions (the Cartesian coordinates of the nuclei
+they are centered on), and $a_x$ and $b_x$ are the $x$ components of the angular
+momentum for the Gaussian functions. For example, in an $s$ orbital, $l = 0$,
+and $l_x$, $l_y$, and $l_z$ are given by the tuple (0, 0, 0), while for a $p$
+orbital, there are three combinations for which $l = 1 = l_x + l_y + l_z$: (1,
+0, 0), (0, 1, 0), and (0, 0, 1). Consequently, for shells composed of multiple
+primitive Gaussian functions, we must loop over these combinations, as well as
+the primitives.
+
+In the code for \verb|overlap_ints|, I first loop over the shells and collect
+these possibilities, as shown in Listing~\ref{lst:ls}. The helper function
+\verb|l_perm| is shown in Listing~\ref{lst:lperm}.
+
+\begin{lstlisting}[caption={Collecting $l$ values for shells}, label={lst:ls}]
+  let mut ls = Vec::new();
+  let mut ss = Vec::new();
+  for (i, shell) in self.0.iter().enumerate() {
+    let l = l_perm(shell.contr[0].l);
+    let s = vec![i; l.len()];
+    ls.extend(l);
+    ss.extend(s);
+  }
+\end{lstlisting}
+
+\begin{lstlisting}[caption={l\_perm}, label={lst:lperm}]
+  fn l_perm(l: usize) -> Vec<(isize, isize, isize)> {
+    match l {
+      0 => vec![(0, 0, 0)],
+      1 => vec![(1, 0, 0), (0, 1, 0), (0, 0, 1)],
+      2 => vec![
+      (2, 0, 0),
+      (0, 2, 0),
+      (0, 0, 2),
+      (0, 1, 1),
+      (1, 1, 0),
+      (1, 0, 1),
+      ],
+      _ => panic!("unmatched l value {l}"),
+    }
+  }
+\end{lstlisting}
+
+With the combinations of angular momenta stored in \verb|ls| and the shells
+associated with them in \verb|ss|, we can iterate over them, effectively
+iterating over the orbitals themselves. For each combination of orbitals, we
+compute the overlap integral for the orbitals, $S_{ij}$, as the sum over
+primitives, where $N$ is the number of primitives in shell 1, and $M$ is the
+number of primitives in shell 1:
+
+\begin{equation}
+  \label{eq:sij}
+  S_{ji} = S_{ij} = \sum_n^N\sum_m^M c_n c_m E_{\vb A \vb B} S_x S_y S_z
+\end{equation}
+
+Recall that $\eab$ includes $\alpha$ and $\beta$, which are subscripted by $n$
+and $m$ in this sum, so $\eab$ does depend on $n$ and $m$. Similarly, $\alpha$
+and $\beta$ in Eqn.~\ref{eq:sx} are $\alpha_n$ and $\beta_m$, and $\vb P$ must
+also be computed on each iteration, again because of its dependence on $\alpha$
+and $\beta$.
+
+\bibliography{refs}
+
+\end{document}

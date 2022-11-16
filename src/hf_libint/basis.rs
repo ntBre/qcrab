@@ -289,16 +289,11 @@ impl Basis {
                             panic!("can't handle spherical harmonics yet");
                         }
 
-                        let pfac = (PI / (alpha + beta)).sqrt();
-                        // loop over (lx,ly,lz) options for each shell's total
-                        // l. actually best to keep these here, not outer loops
-                        let sx =
-                            pfac * s_xyz(*l1x, *l2x, pa.x, pb.x, alpha, beta);
-                        let sy =
-                            pfac * s_xyz(*l1y, *l2y, pa.y, pb.y, alpha, beta);
-                        let sz =
-                            pfac * s_xyz(*l1z, *l2z, pa.z, pb.z, alpha, beta);
-                        res += eabx * sx * sy * sz;
+                        let pfac = (PI / (alpha + beta)).powf(1.5);
+                        let sx = s_xyz(*l1x, *l2x, pa.x, pb.x, alpha, beta);
+                        let sy = s_xyz(*l1y, *l2y, pa.y, pb.y, alpha, beta);
+                        let sz = s_xyz(*l1z, *l2z, pa.z, pb.z, alpha, beta);
+                        res += pfac * eabx * sx * sy * sz;
                     }
                 }
                 result[(i, j)] = res;

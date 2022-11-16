@@ -4,7 +4,6 @@ use crate::{
     molecule::{Atom, Molecule},
     Dmat,
 };
-use itertools::Itertools;
 use std::{f64::consts::PI, fs::read_to_string, ops::Index, path::Path};
 
 #[derive(PartialEq, Debug)]
@@ -269,12 +268,10 @@ impl Basis {
 
         for s1 in 0..self.len() {
             let bf1 = shell2bf[s1];
-            let n1 = self[s1].cartesian_size();
             for s2 in 0..=s1 {
                 let bf2 = shell2bf[s2];
-                let n2 = self[s2].cartesian_size();
-                let s1: &Shell = &self[s1];
-                let s2: &Shell = &self[s2];
+                let s1 = &self[s1];
+                let s2 = &self[s2];
                 assert!(
                     s1.ncontr() == 1 && s2.ncontr() == 1,
                     "generally-contracted shells not yet supported"
@@ -282,21 +279,18 @@ impl Basis {
 
                 let l1 = s1.contr[0].l;
                 let l2 = s2.contr[0].l;
-                let mut buf = vec![0.0; n1 * n2];
-                // somewhere in here I have to loop over the actual
-                // orbitals, not just the shells. that's where the missing
-                // entries are coming from - 3*1 for pxs overlap and 3*3 for
-                // the pxp overlap
+                let ls1 = l_perm(l1);
+                let ls2 = l_perm(l2);
                 for (p1, alpha) in s1.alpha.iter().enumerate() {
                     for (p2, beta) in s2.alpha.iter().enumerate() {
                         let a = s1.origin;
                         let b = s2.origin;
                         let c1 = s1.contr[0].coeff[p1];
                         let c2 = s2.contr[0].coeff[p2];
-                        let gammap = alpha + beta;
-                        let oogammap = 1.0 / gammap;
-                        let rhop_over_alpha1 = beta * oogammap;
-                        let rhop = alpha * rhop_over_alpha1;
+                        let gamma = alpha + beta;
+                        // in-lining this fails the test...
+                        let oogammap = 1.0 / gamma;
+                        let rhop = alpha * beta * oogammap;
                         let ab_x = a[0] - b[0];
                         let ab_y = a[1] - b[1];
                         let ab_z = a[2] - b[2];
@@ -304,11 +298,11 @@ impl Basis {
                         let ab2_y = ab_y * ab_y;
                         let ab2_z = ab_z * ab_z;
 
-                        let ovlp_ss_x = f64::exp(-rhop * ab2_x) * c1 * c2;
-                        let ovlp_ss_y = f64::exp(-rhop * ab2_y);
-                        let ovlp_ss_z = f64::exp(-rhop * ab2_z);
+                        let eabx = f64::exp(-rhop * ab2_x) * c1 * c2;
+                        let eaby = f64::exp(-rhop * ab2_y);
+                        let eabz = f64::exp(-rhop * ab2_z);
 
-                        let p = (*alpha * a + *beta * b) / gammap;
+                        let p = (*alpha * a + *beta * b) / gamma;
                         let pa = p - a;
                         let pb = p - b;
 
@@ -316,40 +310,31 @@ impl Basis {
                             panic!("can't handle spherical harmonics yet");
                         }
 
-                        let ls1 = l_perm(l1);
-                        let ls2 = l_perm(l2);
-
                         let pfac = (PI / (alpha + beta)).sqrt();
-                        let combos = ls1.iter().cartesian_product(ls2);
-                        for (i, ((l1x, l1y, l1z), (l2x, l2y, l2z))) in
-                            combos.enumerate()
-                        {
-                            let ix = pfac
-                                * s_xyz(*l1x, l2x, pa.x, pb.x, alpha, beta);
-                            let iy = pfac
-                                * s_xyz(*l1y, l2y, pa.y, pb.y, alpha, beta);
-                            let iz = pfac
-                                * s_xyz(*l1z, l2z, pa.z, pb.z, alpha, beta);
-                            buf[i] += ovlp_ss_x
-                                * ovlp_ss_y
-                                * ovlp_ss_z
-                                * ix
-                                * iy
-                                * iz;
+                        // actually best to keep these here, not outer loops
+                        for (i, (l1x, l1y, l1z)) in ls1.iter().enumerate() {
+                            for (j, (l2x, l2y, l2z)) in ls2.iter().enumerate() {
+                                let ix = pfac
+                                    * s_xyz(
+                                        *l1x, *l2x, pa.x, pb.x, alpha, beta,
+                                    );
+                                let iy = pfac
+                                    * s_xyz(
+                                        *l1y, *l2y, pa.y, pb.y, alpha, beta,
+                                    );
+                                let iz = pfac
+                                    * s_xyz(
+                                        *l1z, *l2z, pa.z, pb.z, alpha, beta,
+                                    );
+                                result[(bf1 + i, bf2 + j)] +=
+                                    eabx * eaby * eabz * ix * iy * iz;
+                            }
                         }
-                    }
-                }
-                let mut ij = 0;
-                for i in bf1..bf1 + n1 {
-                    for j in bf2..bf2 + n2 {
-                        // println!("{} {} {:.8}", i + 1, j + 1, buf[ij]);
-                        result[(i, j)] = buf[ij];
-                        result[(j, i)] = buf[ij];
-                        ij += 1;
                     }
                 }
             }
         }
+        result.fill_upper_triangle_with_lower_triangle();
         result
     }
 }

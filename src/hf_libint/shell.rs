@@ -105,6 +105,7 @@ impl Shell {
         ret
     }
 
+    #[allow(unused)]
     pub(crate) fn cartesian_size(&self) -> usize {
         self.contr.iter().map(|c| c.cartesian_size()).sum()
     }

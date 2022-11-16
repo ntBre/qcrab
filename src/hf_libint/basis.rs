@@ -313,20 +313,6 @@ impl Basis {
                         let pb = p - b;
 
                         if s1.contr[0].pure || s2.contr[0].pure {
-                            if s1.contr[0].pure {
-                                let x2 = s1.origin.x.powi(2);
-                                let y2 = s1.origin.x.powi(2);
-                                let z2 = s1.origin.x.powi(2);
-                                let r2 = x2 + y2 + z2;
-                                let r = r2.sqrt();
-                                // radial part
-                                let rl = r.powi(s1.contr[0].l as i32)
-                                    * f64::exp(-alpha * r2);
-                                // from the table on wikipedia
-                                let y22 =
-                                    0.25 * f64::sqrt(15.0 / PI) * (x2 - y2)
-                                        / r2;
-                            }
                             panic!("can't handle spherical harmonics yet");
                         }
 

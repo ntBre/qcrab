@@ -14,3 +14,4 @@ this to a fully-featured chemistry package.
   - J. T. Fermann and E. F. Valeev. "Fundamentals of Molecular Integrals
     Evaluation."
   - [[https://github.com/evaleev/libint][libint]] source code
+  - [[https://github.com/psi4/psi4][psi4]] source code

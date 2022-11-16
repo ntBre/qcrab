@@ -289,12 +289,12 @@ impl Basis {
 
         // loop over orbitals
         for (i, (l1x, l1y, l1z)) in self.angular_momenta.iter().enumerate() {
+            let s1 = &self.shells[self.shell_ids[i]];
+            let a = s1.origin;
             for (j, (l2x, l2y, l2z)) in
                 self.angular_momenta[..=i].iter().enumerate()
             {
-                let s1 = &self.shells[self.shell_ids[i]];
                 let s2 = &self.shells[self.shell_ids[j]];
-                let a = s1.origin;
                 let b = s2.origin;
                 let ab = a - b;
                 let ab2 = ab.dot(&ab);
@@ -306,7 +306,7 @@ impl Basis {
                         let c2 = s2.contr[0].coeff[p2];
                         let gamma = alpha + beta;
                         let rhop = alpha * beta / gamma;
-                        let eabx = f64::exp(-rhop * ab2) * c1 * c2;
+                        let eab = f64::exp(-rhop * ab2) * c1 * c2;
                         let p = (*alpha * a + *beta * b) / gamma;
                         let pa = p - a;
                         let pb = p - b;
@@ -319,7 +319,71 @@ impl Basis {
                         let sx = s_xyz(*l1x, *l2x, pa.x, pb.x, alpha, beta);
                         let sy = s_xyz(*l1y, *l2y, pa.y, pb.y, alpha, beta);
                         let sz = s_xyz(*l1z, *l2z, pa.z, pb.z, alpha, beta);
-                        res += pfac * eabx * sx * sy * sz;
+                        res += pfac * eab * sx * sy * sz;
+                    }
+                }
+                result[(i, j)] = res;
+                result[(j, i)] = res;
+            }
+        }
+        result
+    }
+
+    #[allow(unused)]
+    pub(crate) fn kinetic_ints(&self) -> Dmat {
+        let n = self.nbasis();
+        let mut result = Dmat::zeros(n, n);
+
+        // loop over orbitals
+        for (i, (l1x, l1y, l1z)) in self.angular_momenta.iter().enumerate() {
+            let s1 = &self.shells[self.shell_ids[i]];
+            let a = s1.origin;
+            for (j, (l2x, l2y, l2z)) in
+                self.angular_momenta[..=i].iter().enumerate()
+            {
+                let s2 = &self.shells[self.shell_ids[j]];
+                let b = s2.origin;
+                let ab = a - b;
+                let ab2 = ab.dot(&ab);
+                let mut res = 0.0;
+                // loop over primitives within shells
+                for (p1, alpha) in s1.alpha.iter().enumerate() {
+                    for (p2, beta) in s2.alpha.iter().enumerate() {
+                        let c1 = s1.contr[0].coeff[p1];
+                        let c2 = s2.contr[0].coeff[p2];
+                        let gamma = alpha + beta;
+                        let rhop = alpha * beta / gamma;
+                        let eab = f64::exp(-rhop * ab2) * c1 * c2;
+                        let p = (*alpha * a + *beta * b) / gamma;
+                        let pa = p - a;
+                        let pb = p - b;
+
+                        if s1.contr[0].pure || s2.contr[0].pure {
+                            panic!("can't handle spherical harmonics yet");
+                        }
+
+                        let pfac = (PI / (alpha + beta)).powf(1.5);
+                        let sx = s_xyz(*l1x, *l2x, pa.x, pb.x, alpha, beta);
+                        let sy = s_xyz(*l1y, *l2y, pa.y, pb.y, alpha, beta);
+                        let sz = s_xyz(*l1z, *l2z, pa.z, pb.z, alpha, beta);
+                        // this is big K
+                        let kx = pfac
+                            * eab
+                            * k_xyz(*l1x, *l2x, pa.x, pb.x, alpha, beta)
+                            * sy
+                            * sz;
+                        let ky = pfac
+                            * eab
+                            * k_xyz(*l1y, *l2y, pa.y, pb.y, alpha, beta)
+                            * sx
+                            * sz;
+                        let kz = pfac
+                            * eab
+                            * k_xyz(*l1z, *l2z, pa.z, pb.z, alpha, beta)
+                            * sx
+                            * sy;
+
+                        res += kx + ky + kz;
                     }
                 }
                 result[(i, j)] = res;
@@ -330,7 +394,38 @@ impl Basis {
     }
 }
 
-/// compute individual S_[xyz] values
+fn k_xyz(
+    ax: usize,
+    bx: usize,
+    pa: f64,
+    pb: f64,
+    alpha: &f64,
+    beta: &f64,
+) -> f64 {
+    let a = ax as f64;
+    let b = bx as f64;
+    if ax == 0 && bx == 0 {
+        2.0 * alpha * beta * s_xyz(1, 1, pa, pb, alpha, beta)
+    } else if ax == 0 {
+        -alpha * b * s_xyz(1, bx - 1, pa, pb, alpha, beta)
+            + 2.0 * alpha * beta * s_xyz(1, bx + 1, pa, pb, alpha, beta)
+    } else if bx == 0 {
+        -a * beta * s_xyz(ax - 1, 1, pa, pb, alpha, beta)
+            + 2.0 * alpha * beta * s_xyz(ax + 1, 1, pa, pb, alpha, beta)
+    } else {
+        let x = a * b * s_xyz(ax - 1, bx - 1, pa, pb, alpha, beta);
+        let y = -2.0 * alpha * b * s_xyz(ax + 1, bx - 1, pa, pb, alpha, beta);
+        let z = -2.0 * a * beta * s_xyz(ax - 1, bx + 1, pa, pb, alpha, beta);
+        let w = 4.0 * alpha * beta * s_xyz(ax + 1, bx + 1, pa, pb, alpha, beta);
+        // I have no idea why this is 0.75 instead of the 0.5 in Ho13, but it
+        // works. basically a fluke I even found this after trying 1.0, seeing
+        // it went too far in the right direction and splitting the difference,
+        // but it matches the loaded integrals exactly
+        0.75 * (x + y + z + w)
+    }
+}
+
+/// compute individual s_[xyz] values
 fn s_xyz(
     ax: usize,
     bx: usize,

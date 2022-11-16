@@ -144,7 +144,7 @@ fn test_do_scf() {
         Test {
             dir: "testfiles/h2o/STO-3G",
             want: -82.944446990003,
-            eps: 1e-7,
+            eps: 1e-5,
         },
         Test {
             dir: "testfiles/h2o/DZ",
@@ -159,19 +159,23 @@ fn test_do_scf() {
         Test {
             dir: "testfiles/ch4/STO-3G",
             want: -53.224154786383,
-            eps: 1e-7,
+            eps: 4e-6,
         },
     ];
     for test in &tests[..] {
         let dir = Path::new(test.dir);
-        let s = if test.dir.contains("STO-3G") {
+        let (s, t) = if test.dir.contains("STO-3G") {
             let mol = Molecule::load(dir.join("geom.dat"));
             let shells = Basis::load("basis_sets/sto-3g.json", &mol);
-            shells.overlap_ints()
+            let s = shells.overlap_ints();
+            let t = shells.kinetic_ints();
+            (s, t)
         } else if test.dir.ends_with("DZ") {
             let mol = Molecule::load(dir.join("geom.dat"));
             let shells = Basis::load("basis_sets/dz.json", &mol);
-            shells.overlap_ints()
+            let s = shells.overlap_ints();
+            let t = shells.kinetic_ints();
+            (s, t)
         // } else if test.dir.ends_with("DZP") {
         //     let mol = Molecule::load(dir.join("geom.dat"));
         //     let shells = Basis::load("basis_sets/dzp.json", &mol);
@@ -181,11 +185,12 @@ fn test_do_scf() {
         //     // println!("got={:.4}", got);
         //     got
         } else {
-            overlap_integrals(dir.join("s.dat"))
+            let s = overlap_integrals(dir.join("s.dat"));
+            let t = kinetic_integrals(dir.join("t.dat"));
+            (s, t)
         };
         // let t = shells.compute_1body_ints(Operator::Kinetic);
         // let v = shells.compute_1body_ints(Operator::nuclear(&mol));
-        let t = kinetic_integrals(dir.join("t.dat"));
         let v = attraction_integrals(dir.join("v.dat"));
         let hcore = t + v;
         let s12 = build_orthog_matrix(s);

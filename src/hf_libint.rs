@@ -81,6 +81,34 @@ fn overlap() {
     }
 }
 
+#[test]
+fn kinetic() {
+    let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
+    let shells = basis::Basis::sto3g(&mol);
+    let want = crate::hf::kinetic_integrals("testfiles/h2o/STO-3G/t.dat");
+    let got = shells.kinetic_ints();
+    if approx::abs_diff_ne!(got, want, epsilon = 1e-13) {
+        println!("got={:.8}", got);
+        println!("want={:.8}", want);
+        println!("diff={:.8}", &got - &want);
+        panic!("differ by {:.2e}", (got - want).abs().max());
+    }
+}
+
+#[test]
+fn kinetic_dz() {
+    let mol = Molecule::load("testfiles/h2o/DZ/geom.dat");
+    let shells = basis::Basis::load("basis_sets/dz.json", &mol);
+    let want = crate::hf::kinetic_integrals("testfiles/h2o/DZ/t.dat");
+    let got = shells.kinetic_ints();
+    if approx::abs_diff_ne!(got, want, epsilon = 1e-13) {
+        println!("got={:.8}", got);
+        println!("want={:.8}", want);
+        println!("diff={:.8}", &got - &want);
+        panic!("differ by {:.2e}", (got - want).abs().max());
+    }
+}
+
 #[cfg(test)]
 mod benches {
     extern crate test;

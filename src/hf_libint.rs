@@ -54,7 +54,7 @@ fn libint() {
     let mol = Molecule::load("testfiles/h2o/STO-3G/geom.dat");
     let _enuc = nuclear_repulsion(&mol);
     let shells = basis::Basis::sto3g(&mol);
-    let _nao: usize = shells.0.iter().map(|s| s.size()).sum();
+    let _nao: usize = shells.shells.iter().map(|s| s.size()).sum();
 
     let want = overlap_integrals("testfiles/h2o/STO-3G/s.dat");
     let got = shells.overlap_ints();

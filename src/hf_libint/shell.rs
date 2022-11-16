@@ -29,10 +29,6 @@ impl Shell {
         }
     }
 
-    pub(crate) fn ncontr(&self) -> usize {
-        self.contr.len()
-    }
-
     #[allow(unused)]
     pub(crate) fn nprim(&self) -> usize {
         self.alpha.len()

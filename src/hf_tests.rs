@@ -149,7 +149,7 @@ fn test_do_scf() {
         Test {
             dir: "testfiles/h2o/DZ",
             want: -83.980246037187,
-            eps: 1e-12,
+            eps: 4e-12,
         },
         Test {
             dir: "testfiles/h2o/DZP",

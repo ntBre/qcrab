@@ -154,17 +154,6 @@ impl Basis {
         self.0.iter().map(|s| s.size()).sum()
     }
 
-    /// the name pretty much says it don't you think?
-    pub(crate) fn map_shell_to_basis_function(&self) -> Vec<usize> {
-        let mut ret = Vec::with_capacity(self.len());
-        let mut n = 0;
-        for shell in &self.0 {
-            ret.push(n);
-            n += shell.size();
-        }
-        ret
-    }
-
     /// STO-3G basis set
     ///
     /// cite: W. J. Hehre, R. F. Stewart, and J. A. Pople, The Journal of Chemical
@@ -256,6 +245,7 @@ impl Basis {
         Self(shells)
     }
 
+    #[allow(unused)]
     pub(crate) fn len(&self) -> usize {
         self.0.len()
     }
@@ -264,44 +254,33 @@ impl Basis {
         let n = self.nbasis();
         let mut result = Dmat::zeros(n, n);
 
-        let shell2bf = self.map_shell_to_basis_function();
+        let mut ls = Vec::new();
+        let mut ss = Vec::new();
+        for (i, shell) in self.0.iter().enumerate() {
+            let l = l_perm(shell.contr[0].l);
+            let s = vec![i; l.len()];
+            ls.extend(l);
+            ss.extend(s);
+        }
 
-        for s1 in 0..self.len() {
-            let bf1 = shell2bf[s1];
-            for s2 in 0..=s1 {
-                let bf2 = shell2bf[s2];
-                let s1 = &self[s1];
-                let s2 = &self[s2];
-                assert!(
-                    s1.ncontr() == 1 && s2.ncontr() == 1,
-                    "generally-contracted shells not yet supported"
-                );
-
-                let l1 = s1.contr[0].l;
-                let l2 = s2.contr[0].l;
-                let ls1 = l_perm(l1);
-                let ls2 = l_perm(l2);
+        // loop over orbitals
+        for (i, (l1x, l1y, l1z)) in ls.iter().enumerate() {
+            for (j, (l2x, l2y, l2z)) in ls[..=i].iter().enumerate() {
+                let s1 = &self.0[ss[i]];
+                let s2 = &self.0[ss[j]];
+                let a = s1.origin;
+                let b = s2.origin;
+                let ab = a - b;
+                let ab2 = ab.dot(&ab);
+                let mut res = 0.0;
+                // loop over primitives within shells
                 for (p1, alpha) in s1.alpha.iter().enumerate() {
                     for (p2, beta) in s2.alpha.iter().enumerate() {
-                        let a = s1.origin;
-                        let b = s2.origin;
                         let c1 = s1.contr[0].coeff[p1];
                         let c2 = s2.contr[0].coeff[p2];
                         let gamma = alpha + beta;
-                        // in-lining this fails the test...
-                        let oogammap = 1.0 / gamma;
-                        let rhop = alpha * beta * oogammap;
-                        let ab_x = a[0] - b[0];
-                        let ab_y = a[1] - b[1];
-                        let ab_z = a[2] - b[2];
-                        let ab2_x = ab_x * ab_x;
-                        let ab2_y = ab_y * ab_y;
-                        let ab2_z = ab_z * ab_z;
-
-                        let eabx = f64::exp(-rhop * ab2_x) * c1 * c2;
-                        let eaby = f64::exp(-rhop * ab2_y);
-                        let eabz = f64::exp(-rhop * ab2_z);
-
+                        let rhop = alpha * beta / gamma;
+                        let eabx = f64::exp(-rhop * ab2) * c1 * c2;
                         let p = (*alpha * a + *beta * b) / gamma;
                         let pa = p - a;
                         let pb = p - b;
@@ -311,30 +290,21 @@ impl Basis {
                         }
 
                         let pfac = (PI / (alpha + beta)).sqrt();
-                        // actually best to keep these here, not outer loops
-                        for (i, (l1x, l1y, l1z)) in ls1.iter().enumerate() {
-                            for (j, (l2x, l2y, l2z)) in ls2.iter().enumerate() {
-                                let ix = pfac
-                                    * s_xyz(
-                                        *l1x, *l2x, pa.x, pb.x, alpha, beta,
-                                    );
-                                let iy = pfac
-                                    * s_xyz(
-                                        *l1y, *l2y, pa.y, pb.y, alpha, beta,
-                                    );
-                                let iz = pfac
-                                    * s_xyz(
-                                        *l1z, *l2z, pa.z, pb.z, alpha, beta,
-                                    );
-                                result[(bf1 + i, bf2 + j)] +=
-                                    eabx * eaby * eabz * ix * iy * iz;
-                            }
-                        }
+                        // loop over (lx,ly,lz) options for each shell's total
+                        // l. actually best to keep these here, not outer loops
+                        let sx =
+                            pfac * s_xyz(*l1x, *l2x, pa.x, pb.x, alpha, beta);
+                        let sy =
+                            pfac * s_xyz(*l1y, *l2y, pa.y, pb.y, alpha, beta);
+                        let sz =
+                            pfac * s_xyz(*l1z, *l2z, pa.z, pb.z, alpha, beta);
+                        res += eabx * sx * sy * sz;
                     }
                 }
+                result[(i, j)] = res;
+                result[(j, i)] = res;
             }
         }
-        result.fill_upper_triangle_with_lower_triangle();
         result
     }
 }
@@ -347,11 +317,11 @@ fn l_perm(l: usize) -> Vec<(isize, isize, isize)> {
         1 => vec![(1, 0, 0), (0, 1, 0), (0, 0, 1)],
         2 => vec![
             (2, 0, 0),
+            (0, 2, 0),
+            (0, 0, 2),
             (0, 1, 1),
             (1, 1, 0),
             (1, 0, 1),
-            (0, 0, 2),
-            (0, 2, 0),
         ],
         _ => panic!("unmatched l value {l}"),
     }
